@@ -42,7 +42,7 @@ button.d{color:var(--red)}
 .pane{background:var(--bg);width:100%;max-height:88%;overflow:auto;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));box-sizing:border-box}
 label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 .row{display:flex;gap:8px}.row>div{flex:1}
-.th{width:54px;height:54px;border-radius:10px;object-fit:cover;background:var(--bd);flex:none;cursor:pointer}.ph{display:flex;align-items:center;justify-content:center;font-size:22px}.empty{text-align:center;color:var(--mut);padding:40px 10px}
+.th{height:60px;width:auto;min-width:48px;max-width:110px;border-radius:10px;object-fit:cover;background:var(--bd);flex:none;cursor:pointer}.ph{display:flex;align-items:center;justify-content:center;font-size:22px;width:60px}.empty{text-align:center;color:var(--mut);padding:40px 10px}
 .msg{font-size:13px;margin:8px 0;color:var(--mut)}
 .msg.err{color:var(--red)}
 .note{font-size:12px;color:var(--mut);margin-top:16px;text-align:center}
@@ -75,7 +75,7 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script>
 (function(){
-var KEY="meds-v1",curImg="",imgCb=null,srcImg="",formRem=false,editing=null,items=[],mode="add",pending=null;
+var KEY="meds-v1",curImg="",imgCb=null,srcImg="",cropAR=4/3,formRem=false,editing=null,items=[],mode="add",pending=null;
 function load(){try{items=JSON.parse(localStorage.getItem(KEY)||"[]")}catch(e){items=[]}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(items))}catch(e){}}
 function $(i){return document.getElementById(i)}
@@ -104,7 +104,7 @@ function open(html){$("pane").innerHTML=html;$("sheet").classList.add("show")}
 function close(){$("sheet").classList.remove("show");pending=null;editing=null}
 function form(d,isRem){
   d=d||{};curImg=d.img||"";formRem=isRem;
-  return '<h2 style="margin:0 0 4px">'+(editing?"تعديل بيانات الدواء":isRem?"إزالة دواء":"تأكيد بيانات الدواء")+'</h2><div class="msg" id="fm"></div>'+'<div class="row" style="align-items:center"><div style="flex:none;max-width:64px">'+(curImg?'<img id="fImg" class="th" src="'+curImg+'">':'<div id="fImg" class="th ph">📷</div>')+'</div><div><button id="fP" style="width:100%">📷 صورة العلبة</button>'+(srcImg?'<button id="fC" style="width:100%;margin-top:6px">✂︎ ضبط الإطار</button>':'')+'</div></div>'+
+  return '<h2 style="margin:0 0 4px">'+(editing?"تعديل بيانات الدواء":isRem?"إزالة دواء":"تأكيد بيانات الدواء")+'</h2><div class="msg" id="fm"></div>'+'<div class="row" style="align-items:center"><div style="flex:none;max-width:110px">'+(curImg?'<img id="fImg" class="th" src="'+curImg+'">':'<div id="fImg" class="th ph">📷</div>')+'</div><div><button id="fP" style="width:100%">📷 صورة العلبة</button>'+(srcImg?'<button id="fC" style="width:100%;margin-top:6px">✂︎ ضبط الإطار</button>':'')+'</div></div>'+
   '<label>اسم الدواء</label><input id="fN" value="'+esc(d.name)+'">'+
   '<div class="row"><div><label>المادة الفعالة</label><input id="fD" value="'+esc(d.dci)+'"></div><div><label>الجرعة</label><input id="fG" value="'+esc(d.dosage)+'"></div></div>'+
   '<div class="row"><div><label>الشكل</label><input id="fF" value="'+esc(d.form)+'"></div><div><label>رقم الدفعة (Lot)</label><input id="fL" value="'+esc(d.lot)+'"></div></div>'+
@@ -139,15 +139,17 @@ function wire(isRem){
   $("ok").onclick=function(){var d=read();var e=editing?doEdit(d):isRem?doRem(d):doAdd(d);if(e){$("fm").textContent=e;$("fm").className="msg err"}}
 }
 function big(f){return new Promise(function(res,rej){var u=URL.createObjectURL(f),im=new Image();im.onload=function(){var s=Math.min(1,1000/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);c.getContext("2d").drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);res(c.toDataURL("image/jpeg",.85))};im.onerror=function(){rej(new Error("img"))};im.src=u})}
-function cut(src,x,y,w,h){return new Promise(function(res){var im=new Image();im.onload=function(){var c=document.createElement("canvas");c.width=c.height=480;c.getContext("2d").drawImage(im,x,y,w,h,0,0,480,480);res(c.toDataURL("image/jpeg",.8))};im.src=src})}
-function sq(src){return new Promise(function(res){var im=new Image();im.onload=function(){var m=Math.min(im.width,im.height);cut(src,(im.width-m)/2,(im.height-m)/2,m,m).then(res)};im.src=src})}
+function cut(src,x,y,w,h){return new Promise(function(res){var im=new Image();im.onload=function(){var k=480/Math.max(w,h),c=document.createElement("canvas");c.width=Math.round(w*k);c.height=Math.round(h*k);c.getContext("2d").drawImage(im,x,y,w,h,0,0,c.width,c.height);res(c.toDataURL("image/jpeg",.8))};im.src=src})}
+function sq(src){return new Promise(function(res){var im=new Image();im.onload=function(){var cw=im.width,ch=im.height;if(cw/ch>cropAR)cw=ch*cropAR;else ch=cw/cropAR;cut(src,(im.width-cw)/2,(im.height-ch)/2,cw,ch).then(res)};im.src=src})}
+function ratioBtns(){return '<div class="seg">'+[[4/3,"أفقي 4:3"],[1,"مربع"],[3/4,"عمودي 3:4"]].map(function(r,i){return '<button data-r="'+i+'"'+(Math.abs(cropAR-r[0])<.01?' class="on"':'')+'>'+r[1]+'</button>'}).join("")+'</div>'}
 function cropper(src,done,cancel){
   var im=new Image();
   im.onload=function(){
-    var V=Math.min(320,window.innerWidth-64),min=Math.max(V/im.width,V/im.height),z=min,x=(V-im.width*z)/2,y=(V-im.height*z)/2,P={},last=0;
-    open('<h2 style="margin:0 0 6px">ضبط إطار الصورة</h2><div class="msg">اسحب الصورة لتحريكها، وكبّرها بالمنزلق أو بإصبعين.</div><div id="cv" style="width:'+V+'px;height:'+V+'px;margin:0 auto;position:relative;overflow:hidden;border-radius:12px;background:#000;touch-action:none"><img id="ci" src="'+src+'" style="position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;width:'+im.width+'px;height:'+im.height+'px;user-select:none;-webkit-user-drag:none;pointer-events:none"></div><input type="range" id="zm" min="100" max="400" value="100" style="margin:14px 0;padding:0"><div class="row"><button id="rt">↻ تدوير</button><button class="p" id="ok2">تم</button><button id="cx2">إلغاء</button></div>');
+    var V=Math.min(320,window.innerWidth-64),VW=cropAR>=1?V:Math.round(V*cropAR),VH=cropAR>=1?Math.round(V/cropAR):V,min=Math.max(VW/im.width,VH/im.height),z=min,x=(VW-im.width*z)/2,y=(VH-im.height*z)/2,P={},last=0;
+    open('<h2 style="margin:0 0 6px">ضبط إطار الصورة</h2><div class="msg">اسحب الصورة لتحريكها، وكبّرها بالمنزلق أو بإصبعين.</div>'+ratioBtns()+'<div id="cv" style="width:'+VW+'px;height:'+VH+'px;margin:0 auto;position:relative;overflow:hidden;border-radius:12px;background:#000;touch-action:none"><img id="ci" src="'+src+'" style="position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;width:'+im.width+'px;height:'+im.height+'px;user-select:none;-webkit-user-drag:none;pointer-events:none"></div><input type="range" id="zm" min="100" max="400" value="100" style="margin:14px 0;padding:0"><div class="row"><button id="rt">↻ تدوير</button><button class="p" id="ok2">تم</button><button id="cx2">إلغاء</button></div>');
     var cv=$("cv"),ci=$("ci"),zm=$("zm");
-    function apply(){var w=im.width*z,h=im.height*z;x=Math.min(0,Math.max(V-w,x));y=Math.min(0,Math.max(V-h,y));ci.style.transform="translate("+x+"px,"+y+"px) scale("+z+")";zm.value=Math.round(z/min*100)}
+    document.querySelectorAll(".seg button[data-r]").forEach(function(b){b.onclick=function(){cropAR=[4/3,1,3/4][+b.dataset.r];cropper(src,done,cancel)}});
+    function apply(){var w=im.width*z,h=im.height*z;x=Math.min(0,Math.max(VW-w,x));y=Math.min(0,Math.max(VH-h,y));ci.style.transform="translate("+x+"px,"+y+"px) scale("+z+")";zm.value=Math.round(z/min*100)}
     cv.onpointerdown=function(e){cv.setPointerCapture(e.pointerId);P[e.pointerId]=[e.clientX,e.clientY];last=0};
     cv.onpointermove=function(e){
       if(!P[e.pointerId])return;
@@ -158,9 +160,9 @@ function cropper(src,done,cancel){
         last=d}
       apply()};
     cv.onpointerup=cv.onpointercancel=function(e){delete P[e.pointerId];last=0};
-    zm.oninput=function(){var nz=min*zm.value/100,r=nz/z;x=V/2-(V/2-x)*r;y=V/2-(V/2-y)*r;z=nz;apply()};
+    zm.oninput=function(){var nz=min*zm.value/100,r=nz/z;x=VW/2-(VW/2-x)*r;y=VH/2-(VH/2-y)*r;z=nz;apply()};
     $("rt").onclick=function(){var c=document.createElement("canvas");c.width=im.height;c.height=im.width;var g=c.getContext("2d");g.translate(c.width,0);g.rotate(Math.PI/2);g.drawImage(im,0,0);var u=c.toDataURL("image/jpeg",.85);srcImg=u;cropper(u,done,cancel)};
-    $("ok2").onclick=function(){cut(src,-x/z,-y/z,V/z,V/z).then(done)};
+    $("ok2").onclick=function(){cut(src,-x/z,-y/z,VW/z,VH/z).then(done)};
     $("cx2").onclick=cancel;
     apply()};
   im.src=src}
