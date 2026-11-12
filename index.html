@@ -42,7 +42,7 @@ button.d{color:var(--red)}
 .pane{background:var(--bg);width:100%;max-height:88%;overflow:auto;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));box-sizing:border-box}
 label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 .row{display:flex;gap:8px}.row>div{flex:1}
-.th{height:60px;width:auto;min-width:48px;max-width:110px;border-radius:10px;object-fit:cover;background:var(--bd);flex:none;cursor:pointer}.ph{display:flex;align-items:center;justify-content:center;font-size:22px;width:60px}.empty{text-align:center;color:var(--mut);padding:40px 10px}
+.th{height:60px;width:auto;min-width:48px;max-width:110px;border-radius:10px;object-fit:cover;background:var(--bd);flex:none;cursor:pointer}.ph{display:flex;align-items:center;justify-content:center;font-size:22px;width:60px}.al{border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:14px;line-height:1.7}.empty{text-align:center;color:var(--mut);padding:40px 10px}
 .msg{font-size:13px;margin:8px 0;color:var(--mut)}
 .msg.err{color:var(--red)}
 .note{font-size:12px;color:var(--mut);margin-top:16px;text-align:center}
@@ -56,10 +56,10 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
   <div class="st s-o"><b id="cO">0</b>تنتهي خلال 90 يوماً</div>
   <div class="st s-g"><b id="cG">0</b>صالحة</div>
 </div>
-<input id="srch" placeholder="بحث باسم الدواء أو المادة الفعالة…">
+<div id="al"></div><input id="srch" placeholder="بحث باسم الدواء أو المادة الفعالة…">
 <div id="list"></div>
 <div class="note">البيانات محفوظة في هذا المتصفح فقط. استعمل «نسخ احتياطي» للحفظ.</div>
-<div class="note"><button id="gt">اختبار الاتصال</button> <button id="gs">⚙︎ مفتاح Gemini</button> <button id="bk">نسخ احتياطي</button> <button id="rs">استعادة</button></div>
+<div class="note"><button id="gt">اختبار الاتصال</button> <button id="gs">⚙︎ مفتاح Gemini</button> <button id="ics">📅 تذكيرات التقويم</button> <button id="bk">نسخ احتياطي</button> <button id="rs">استعادة</button></div>
 
 <div class="bar">
   <button class="p" id="bAdd">📷 مسح وإضافة</button>
@@ -88,16 +88,17 @@ function status(ym){var d=days(ym);if(d==null)return["b-o","غير معروف"];
 function thumb(it){return it.img?'<img class="th" data-a="v" data-id="'+it.id+'" src="'+it.img+'">':'<div class="th ph" data-a="i" data-id="'+it.id+'">📷</div>'}
 function small(f){return new Promise(function(res,rej){var u=URL.createObjectURL(f),im=new Image();im.onload=function(){var m=360,s=Math.min(1,m/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);c.getContext("2d").drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);res(c.toDataURL("image/jpeg",.72))};im.onerror=function(){rej(new Error("img"))};im.src=u})}
 function render(){
-  var q=norm($("srch").value),r=0,o=0,g=0,h="";
+  var q=norm($("srch").value),r=0,o=0,g=0,ER=[],EO=[],h="";
   var arr=items.slice().sort(function(a,b){return String(a.expiry).localeCompare(String(b.expiry))});
   arr.forEach(function(it){
-    var d=days(it.expiry);if(d!=null&&d<0)r+=it.qty;else if(d!=null&&d<=90)o+=it.qty;else g+=it.qty;
+    var d=days(it.expiry);if(d!=null&&d<0){r+=it.qty;ER.push(it.name)}else if(d!=null&&d<=90){o+=it.qty;EO.push(it.name+" ("+d+" يوم)")}else g+=it.qty;
     if(q&&norm(it.name+it.dci).indexOf(q)<0)return;
     var s=status(it.expiry);
     h+='<div class="card">'+thumb(it)+'<div class="m" data-a="e" data-id="'+it.id+'"><div class="nm"><bdi>'+esc(it.name)+(it.dosage?" "+esc(it.dosage):"")+'</bdi></div><div class="dt">'+esc(it.dci||"")+(it.form?" · "+esc(it.form):"")+'</div><div class="dt">الصلاحية: '+fmt(it.expiry)+(it.lot?" · lot "+esc(it.lot):"")+'</div><div style="margin-top:6px"><span class="badge '+s[0]+'">'+s[1]+'</span></div></div>'+
     '<div class="q"><button data-a="m" data-id="'+it.id+'">−</button><b>'+it.qty+'</b><button data-a="p" data-id="'+it.id+'">+</button></div></div>';
   });
   $("list").innerHTML=h||'<div class="empty">لا توجد أدوية بعد.<br>اضغط «مسح وإضافة» وصوّر ملصق العلبة.</div>';
+  $("al").innerHTML=(ER.length?'<div class="al s-r">⚠️ منتهية الصلاحية: '+esc(ER.join("، "))+'</div>':"")+(EO.length?'<div class="al s-o">⏳ تنتهي قريباً: '+esc(EO.join("، "))+'</div>':"");
   $("cR").textContent=r;$("cO").textContent=o;$("cG").textContent=g;
 }
 function open(html){$("pane").innerHTML=html;$("sheet").classList.add("show")}
@@ -140,31 +141,47 @@ function wire(isRem){
 }
 function big(f){return new Promise(function(res,rej){var u=URL.createObjectURL(f),im=new Image();im.onload=function(){var s=Math.min(1,1000/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);c.getContext("2d").drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);res(c.toDataURL("image/jpeg",.85))};im.onerror=function(){rej(new Error("img"))};im.src=u})}
 function cut(src,x,y,w,h){return new Promise(function(res){var im=new Image();im.onload=function(){var k=480/Math.max(w,h),c=document.createElement("canvas");c.width=Math.round(w*k);c.height=Math.round(h*k);c.getContext("2d").drawImage(im,x,y,w,h,0,0,c.width,c.height);res(c.toDataURL("image/jpeg",.8))};im.src=src})}
-function sq(src){return new Promise(function(res){var im=new Image();im.onload=function(){var cw=im.width,ch=im.height;if(cw/ch>cropAR)cw=ch*cropAR;else ch=cw/cropAR;cut(src,(im.width-cw)/2,(im.height-ch)/2,cw,ch).then(res)};im.src=src})}
-function ratioBtns(){return '<div class="seg">'+[[4/3,"أفقي 4:3"],[1,"مربع"],[3/4,"عمودي 3:4"]].map(function(r,i){return '<button data-r="'+i+'"'+(Math.abs(cropAR-r[0])<.01?' class="on"':'')+'>'+r[1]+'</button>'}).join("")+'</div>'}
+function sq(src){return new Promise(function(res){var im=new Image();im.onload=function(){var cw=im.width,ch=im.height;var a=cropAR||4/3;if(cw/ch>a)cw=ch*a;else ch=cw/a;cut(src,(im.width-cw)/2,(im.height-ch)/2,cw,ch).then(res)};im.src=src})}
+function ratioBtns(){return '<div class="seg">'+[[0,"حر"],[4/3,"4:3"],[1,"مربع"],[3/4,"3:4"]].map(function(r){return '<button data-r="'+r[0]+'"'+(Math.abs((cropAR||0)-r[0])<.01?' class="on"':'')+'>'+r[1]+'</button>'}).join("")+'</div>'}
 function cropper(src,done,cancel){
   var im=new Image();
   im.onload=function(){
-    var V=Math.min(320,window.innerWidth-64),VW=cropAR>=1?V:Math.round(V*cropAR),VH=cropAR>=1?Math.round(V/cropAR):V,min=Math.max(VW/im.width,VH/im.height),z=min,x=(VW-im.width*z)/2,y=(VH-im.height*z)/2,P={},last=0;
-    open('<h2 style="margin:0 0 6px">ضبط إطار الصورة</h2><div class="msg">اسحب الصورة لتحريكها، وكبّرها بالمنزلق أو بإصبعين.</div>'+ratioBtns()+'<div id="cv" style="width:'+VW+'px;height:'+VH+'px;margin:0 auto;position:relative;overflow:hidden;border-radius:12px;background:#000;touch-action:none"><img id="ci" src="'+src+'" style="position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;width:'+im.width+'px;height:'+im.height+'px;user-select:none;-webkit-user-drag:none;pointer-events:none"></div><input type="range" id="zm" min="100" max="400" value="100" style="margin:14px 0;padding:0"><div class="row"><button id="rt">↻ تدوير</button><button class="p" id="ok2">تم</button><button id="cx2">إلغاء</button></div>');
-    var cv=$("cv"),ci=$("ci"),zm=$("zm");
-    document.querySelectorAll(".seg button[data-r]").forEach(function(b){b.onclick=function(){cropAR=[4/3,1,3/4][+b.dataset.r];cropper(src,done,cancel)}});
-    function apply(){var w=im.width*z,h=im.height*z;x=Math.min(0,Math.max(VW-w,x));y=Math.min(0,Math.max(VH-h,y));ci.style.transform="translate("+x+"px,"+y+"px) scale("+z+")";zm.value=Math.round(z/min*100)}
-    cv.onpointerdown=function(e){cv.setPointerCapture(e.pointerId);P[e.pointerId]=[e.clientX,e.clientY];last=0};
+    var IW=im.width,IH=im.height,SW=Math.min(340,window.innerWidth-48),fit=Math.min(SW/IW,SW/IH),vz=fit,vx=(SW-IW*vz)/2,vy=(SW-IH*vz)/2,P={},last=0,mode=null,R={x:0,y:0,w:IW,h:IH};
+    var HS=["nw","n","ne","e","se","s","sw","w"],hp={nw:[0,0],n:[.5,0],ne:[1,0],e:[1,.5],se:[1,1],s:[.5,1],sw:[0,1],w:[0,.5]};
+    open('<h2 style="margin:0 0 6px">ضبط إطار الصورة</h2><div class="msg">اسحب الحواف والزوايا لتغيير الإطار، واسحب داخله لتحريكه، واسحب خارجه لتحريك الصورة. كبّر أو صغّر بإصبعين أو بالمنزلق.</div>'+ratioBtns()+'<div id="cv" style="width:'+SW+'px;height:'+SW+'px;margin:0 auto;position:relative;overflow:hidden;border-radius:12px;background:#222;touch-action:none"><img id="ci" src="'+src+'" style="position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;width:'+IW+'px;height:'+IH+'px;pointer-events:none"><div id="rc" style="position:absolute;border:2px solid #fff;box-shadow:0 0 0 999px rgba(0,0,0,.5);box-sizing:border-box;background-image:linear-gradient(rgba(255,255,255,.35) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.35) 1px,transparent 1px);background-size:33.33% 33.33%">'+HS.map(function(h){return '<i data-h="'+h+'" style="position:absolute;width:32px;height:32px;margin:-16px 0 0 -16px;left:'+hp[h][0]*100+'%;top:'+hp[h][1]*100+'%;display:flex;align-items:center;justify-content:center"><b style="width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(0,0,0,.4)"></b></i>'}).join("")+'</div></div><input type="range" id="zm" min="50" max="400" value="100" style="margin:14px 0;padding:0"><div class="row"><button id="rt">↻ تدوير</button><button class="p" id="ok2">تم</button><button id="cx2">إلغاء</button></div>');
+    var cv=$("cv"),ci=$("ci"),rc=$("rc"),zm=$("zm");
+    function draw(){ci.style.transform="translate("+vx+"px,"+vy+"px) scale("+vz+")";rc.style.left=vx+R.x*vz+"px";rc.style.top=vy+R.y*vz+"px";rc.style.width=R.w*vz+"px";rc.style.height=R.h*vz+"px";zm.value=Math.round(vz/fit*100)}
+    function lock(a){var w=R.w,h=R.h,cx=R.x+w/2,cy=R.y+h/2;if(w/h>a)w=h*a;else h=w/a;R={x:cx-w/2,y:cy-h/2,w:w,h:h}}
+    (function(){var a=cropAR||4/3,w=IW*.9,h=IH*.9;if(w/h>a)w=h*a;else h=w/a;R={x:(IW-w)/2,y:(IH-h)/2,w:w,h:h}})();
+    document.querySelectorAll(".seg button[data-r]").forEach(function(b){b.onclick=function(){cropAR=parseFloat(b.dataset.r);if(cropAR)lock(cropAR);document.querySelectorAll(".seg button[data-r]").forEach(function(x){x.className=x===b?"on":""});draw()}});
+    function resize(h,dx,dy){
+      var L=R.x,T=R.y,Rr=R.x+R.w,B=R.y+R.h,mn=24/vz,a=cropAR,cx=(L+Rr)/2,cy=(T+B)/2;
+      if(/w/.test(h))L=Math.min(Rr-mn,Math.max(0,L+dx));
+      if(/e/.test(h))Rr=Math.max(L+mn,Math.min(IW,Rr+dx));
+      if(/n/.test(h))T=Math.min(B-mn,Math.max(0,T+dy));
+      if(/s/.test(h))B=Math.max(T+mn,Math.min(IH,B+dy));
+      if(a){var hz=/[ew]/.test(h),vt=/[ns]/.test(h),w=Rr-L,hh=B-T;
+        if(hz){hh=w/a;if(vt){if(/n/.test(h))T=B-hh;else B=T+hh}else{T=cy-hh/2;B=T+hh}}
+        else{w=hh*a;L=cx-w/2;Rr=L+w}
+        if(L<0||T<0||Rr>IW||B>IH)return}
+      R={x:L,y:T,w:Rr-L,h:B-T}}
+    cv.onpointerdown=function(e){cv.setPointerCapture(e.pointerId);P[e.pointerId]=[e.clientX,e.clientY];last=0;if(Object.keys(P).length===1){var t=e.target.closest("i[data-h]");mode=t?t.dataset.h:(e.target.closest("#rc")?"move":"pan")}};
     cv.onpointermove=function(e){
       if(!P[e.pointerId])return;
-      var ids=Object.keys(P),o=P[e.pointerId];P[e.pointerId]=[e.clientX,e.clientY];
-      if(ids.length===1){x+=e.clientX-o[0];y+=e.clientY-o[1]}
-      else{var a=P[ids[0]],b=P[ids[1]],d=Math.hypot(a[0]-b[0],a[1]-b[1]);
-        if(last){var nz=Math.min(min*4,Math.max(min,z*d/last)),r=nz/z,rc=cv.getBoundingClientRect(),cx=(a[0]+b[0])/2-rc.left,cy=(a[1]+b[1])/2-rc.top;x=cx-(cx-x)*r;y=cy-(cy-y)*r;z=nz}
+      var ids=Object.keys(P),o=P[e.pointerId],dx=e.clientX-o[0],dy=e.clientY-o[1];P[e.pointerId]=[e.clientX,e.clientY];
+      if(ids.length>1){var a=P[ids[0]],b=P[ids[1]],d=Math.hypot(a[0]-b[0],a[1]-b[1]);
+        if(last){var nz=Math.min(fit*4,Math.max(fit*.5,vz*d/last)),r=nz/vz,bb=cv.getBoundingClientRect(),px=(a[0]+b[0])/2-bb.left,py=(a[1]+b[1])/2-bb.top;vx=px-(px-vx)*r;vy=py-(py-vy)*r;vz=nz}
         last=d}
-      apply()};
-    cv.onpointerup=cv.onpointercancel=function(e){delete P[e.pointerId];last=0};
-    zm.oninput=function(){var nz=min*zm.value/100,r=nz/z;x=VW/2-(VW/2-x)*r;y=VH/2-(VH/2-y)*r;z=nz;apply()};
+      else if(mode==="pan"){vx+=dx;vy+=dy}
+      else if(mode==="move"){R.x=Math.min(IW-R.w,Math.max(0,R.x+dx/vz));R.y=Math.min(IH-R.h,Math.max(0,R.y+dy/vz))}
+      else if(mode)resize(mode,dx/vz,dy/vz);
+      draw()};
+    cv.onpointerup=cv.onpointercancel=function(e){delete P[e.pointerId];last=0;mode=null};
+    zm.oninput=function(){var nz=fit*zm.value/100,r=nz/vz,c=SW/2;vx=c-(c-vx)*r;vy=c-(c-vy)*r;vz=nz;draw()};
     $("rt").onclick=function(){var c=document.createElement("canvas");c.width=im.height;c.height=im.width;var g=c.getContext("2d");g.translate(c.width,0);g.rotate(Math.PI/2);g.drawImage(im,0,0);var u=c.toDataURL("image/jpeg",.85);srcImg=u;cropper(u,done,cancel)};
-    $("ok2").onclick=function(){cut(src,-x/z,-y/z,VW/z,VH/z).then(done)};
+    $("ok2").onclick=function(){cut(src,R.x,R.y,R.w,R.h).then(done)};
     $("cx2").onclick=cancel;
-    apply()};
+    draw()};
   im.src=src}
 function editCrop(){var d=read();cropper(srcImg,function(r){d.img=r;open(form(d,formRem));wire(formRem)},function(){open(form(d,formRem));wire(formRem)})}
 function attach(it){imgCb=function(u){srcImg=u;cropper(u,function(r){it.img=r;save();render();close()},close)};$("imgf").value="";$("imgf").click()}
@@ -237,6 +254,16 @@ $("list").onclick=function(e){
   if(b.dataset.a==="e"){editItem(it);return}if(b.dataset.a==="v"){view(it);return}if(b.dataset.a==="i"){attach(it);return}if(b.dataset.a==="p")it.qty++;else{it.qty--;if(it.qty<=0&&confirm("إزالة "+it.name+" من القائمة؟"))items=items.filter(function(i){return i!==it});else if(it.qty<=0)it.qty=1}
   save();render()
 };
+function icsText(){
+  var n=new Date(),p=function(x){return("0"+x).slice(-2)},st=""+n.getUTCFullYear()+p(n.getUTCMonth()+1)+p(n.getUTCDate())+"T"+p(n.getUTCHours())+p(n.getUTCMinutes())+"00Z",L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//meds//AR","CALSCALE:GREGORIAN"],c=0;
+  items.forEach(function(it){
+    var e=endOf(it.expiry);if(!e||e<n)return;c++;
+    var nx=new Date(e.getFullYear(),e.getMonth(),e.getDate()+1),f=function(d){return""+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())},t="انتهاء صلاحية: "+it.name+(it.dosage?" "+it.dosage:"");
+    L.push("BEGIN:VEVENT","UID:"+it.id+"@meds","DTSTAMP:"+st,"DTSTART;VALUE=DATE:"+f(e),"DTEND;VALUE=DATE:"+f(nx),"SUMMARY:"+t,"DESCRIPTION:"+(it.lot?"Lot "+it.lot:"")+" يُنصح بالتخلص من الدواء بعد هذا التاريخ.");
+    [["-P30D","بعد 30 يوما"],["-P7D","بعد 7 أيام"],["PT9H","اليوم"]].forEach(function(a){L.push("BEGIN:VALARM","TRIGGER:"+a[0],"ACTION:DISPLAY","DESCRIPTION:"+t+" ("+a[1]+")","END:VALARM")});
+    L.push("END:VEVENT")});
+  L.push("END:VCALENDAR");return c?L.join("\r\n"):""}
+$("ics").onclick=function(){var t=icsText();if(!t){alert("لا توجد أدوية بتواريخ انتهاء قادمة.");return}var u=URL.createObjectURL(new Blob([t],{type:"text/calendar"})),l=document.createElement("a");l.href=u;l.download="medicines-expiry.ics";l.click();setTimeout(function(){URL.revokeObjectURL(u)},1000)};
 $("bk").onclick=function(){var u=URL.createObjectURL(new Blob([JSON.stringify(items,null,1)],{type:"application/json"})),l=document.createElement("a");l.href=u;l.download="medicines-backup.json";l.click();setTimeout(function(){URL.revokeObjectURL(u)},1000)};
 $("gt").onclick=async function(){
   var k=localStorage.getItem("gkey");
