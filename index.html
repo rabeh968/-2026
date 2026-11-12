@@ -158,8 +158,9 @@ async function gem(b,k){
   var data=await b64(b),last="خطأ من Gemini",body=JSON.stringify({contents:[{parts:[{text:PROMPT},{inline_data:{mime_type:"image/jpeg",data:data}}]}],generationConfig:{responseMimeType:"application/json",temperature:0}});
   for(var i=0;i<ms.length;i++){
     for(var t=0;t<2;t++){
-      var r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+ms[i]+":generateContent",{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":k},body:body});
-      var j=await r.json().catch(function(){return{}});
+      var r,j;
+      try{r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+ms[i]+":generateContent",{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":k},body:body});j=await r.json().catch(function(){return{}})}
+      catch(e){last="تعذّر الاتصال بخوادم Google عبر "+ms[i]+" ("+(e&&e.message||"network")+")";await new Promise(function(z){setTimeout(z,1500)});continue}
       if(r.ok){
         var tx=j.candidates[0].content.parts[0].text,d=JSON.parse(tx.replace(/```json|```/g,""));
         d.qty=1;d.name=d.name||"";d.expiry=/^\d{4}-\d{2}$/.test(d.expiry||"")?d.expiry:"";return d}
@@ -169,7 +170,7 @@ async function gem(b,k){
       await new Promise(function(z){setTimeout(z,1500)});
     }
   }
-  throw{message:"النماذج مزدحمة الآن، أعد المحاولة بعد قليل. ("+last+")"}}
+  throw{message:last+" — إن تكرر: عطّل VPN/Private Relay/حاجب الإعلانات، أو بدّل بين Wi‑Fi والبيانات، ثم أعد المحاولة."}}
 async function scan(f){
   open('<h2 style="margin:0">\u062c\u0627\u0631\u064a \u0642\u0631\u0627\u0621\u0629 \u0627\u0644\u0645\u0644\u0635\u0642\u2026</h2><div class="msg" id="pg">\u062a\u062d\u0645\u064a\u0644 \u0645\u062d\u0631\u0643 \u0627\u0644\u0642\u0631\u0627\u0621\u0629 (\u0623\u0648\u0644 \u0645\u0631\u0629 \u0642\u062f \u062a\u0633\u062a\u063a\u0631\u0642 \u0648\u0642\u062a\u0627\u064b)</div>');
   try{
