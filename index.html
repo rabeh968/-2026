@@ -42,7 +42,7 @@ button.d{color:var(--red)}
 .pane{background:var(--bg);width:100%;max-height:88%;overflow:auto;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));box-sizing:border-box}
 label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 .row{display:flex;gap:8px}.row>div{flex:1}
-.empty{text-align:center;color:var(--mut);padding:40px 10px}
+.th{width:54px;height:54px;border-radius:10px;object-fit:cover;background:var(--bd);flex:none;cursor:pointer}.ph{display:flex;align-items:center;justify-content:center;font-size:22px}.empty{text-align:center;color:var(--mut);padding:40px 10px}
 .msg{font-size:13px;margin:8px 0;color:var(--mut)}
 .msg.err{color:var(--red)}
 .note{font-size:12px;color:var(--mut);margin-top:16px;text-align:center}
@@ -68,13 +68,14 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 </div>
 <input type="file" id="file" accept="image/*" capture="environment" hidden>
 <input type="file" id="restore" accept="application/json" hidden>
+<input type="file" id="imgf" accept="image/*" hidden>
 
 <div class="sheet" id="sheet"><div class="pane" id="pane"></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script>
 (function(){
-var KEY="meds-v1",items=[],mode="add",pending=null;
+var KEY="meds-v1",curImg="",imgCb=null,items=[],mode="add",pending=null;
 function load(){try{items=JSON.parse(localStorage.getItem(KEY)||"[]")}catch(e){items=[]}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(items))}catch(e){}}
 function $(i){return document.getElementById(i)}
@@ -84,6 +85,8 @@ function endOf(ym){var p=String(ym||"").split("-");if(p.length<2)return null;ret
 function days(ym){var e=endOf(ym);return e?Math.floor((e-new Date())/864e5):null}
 function fmt(ym){var p=String(ym||"").split("-");return p.length<2?"—":p[1]+"/"+p[0]}
 function status(ym){var d=days(ym);if(d==null)return["b-o","غير معروف"];if(d<0)return["b-r","منتهي منذ "+Math.abs(d)+" يوم"];if(d<=90)return["b-o","ينتهي بعد "+d+" يوم"];return["b-g","صالح"]}
+function thumb(it){return it.img?'<img class="th" data-a="v" data-id="'+it.id+'" src="'+it.img+'">':'<div class="th ph" data-a="i" data-id="'+it.id+'">📷</div>'}
+function small(f){return new Promise(function(res,rej){var u=URL.createObjectURL(f),im=new Image();im.onload=function(){var m=360,s=Math.min(1,m/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);c.getContext("2d").drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);res(c.toDataURL("image/jpeg",.72))};im.onerror=function(){rej(new Error("img"))};im.src=u})}
 function render(){
   var q=norm($("srch").value),r=0,o=0,g=0,h="";
   var arr=items.slice().sort(function(a,b){return String(a.expiry).localeCompare(String(b.expiry))});
@@ -91,7 +94,7 @@ function render(){
     var d=days(it.expiry);if(d!=null&&d<0)r+=it.qty;else if(d!=null&&d<=90)o+=it.qty;else g+=it.qty;
     if(q&&norm(it.name+it.dci).indexOf(q)<0)return;
     var s=status(it.expiry);
-    h+='<div class="card"><div class="m"><div class="nm"><bdi>'+esc(it.name)+(it.dosage?" "+esc(it.dosage):"")+'</bdi></div><div class="dt">'+esc(it.dci||"")+(it.form?" · "+esc(it.form):"")+'</div><div class="dt">الصلاحية: '+fmt(it.expiry)+(it.lot?" · lot "+esc(it.lot):"")+'</div><div style="margin-top:6px"><span class="badge '+s[0]+'">'+s[1]+'</span></div></div>'+
+    h+='<div class="card">'+thumb(it)+'<div class="m"><div class="nm"><bdi>'+esc(it.name)+(it.dosage?" "+esc(it.dosage):"")+'</bdi></div><div class="dt">'+esc(it.dci||"")+(it.form?" · "+esc(it.form):"")+'</div><div class="dt">الصلاحية: '+fmt(it.expiry)+(it.lot?" · lot "+esc(it.lot):"")+'</div><div style="margin-top:6px"><span class="badge '+s[0]+'">'+s[1]+'</span></div></div>'+
     '<div class="q"><button data-a="m" data-id="'+it.id+'">−</button><b>'+it.qty+'</b><button data-a="p" data-id="'+it.id+'">+</button></div></div>';
   });
   $("list").innerHTML=h||'<div class="empty">لا توجد أدوية بعد.<br>اضغط «مسح وإضافة» وصوّر ملصق العلبة.</div>';
@@ -100,15 +103,15 @@ function render(){
 function open(html){$("pane").innerHTML=html;$("sheet").classList.add("show")}
 function close(){$("sheet").classList.remove("show");pending=null}
 function form(d,isRem){
-  d=d||{};
-  return '<h2 style="margin:0 0 4px">'+(isRem?"إزالة دواء":"تأكيد بيانات الدواء")+'</h2><div class="msg" id="fm"></div>'+
+  d=d||{};curImg=d.img||"";
+  return '<h2 style="margin:0 0 4px">'+(isRem?"إزالة دواء":"تأكيد بيانات الدواء")+'</h2><div class="msg" id="fm"></div>'+'<div class="row" style="align-items:center"><div style="flex:none;max-width:64px">'+(curImg?'<img id="fImg" class="th" src="'+curImg+'">':'<div id="fImg" class="th ph">📷</div>')+'</div><div><button id="fP" style="width:100%">📷 صورة العلبة</button></div></div>'+
   '<label>اسم الدواء</label><input id="fN" value="'+esc(d.name)+'">'+
   '<div class="row"><div><label>المادة الفعالة</label><input id="fD" value="'+esc(d.dci)+'"></div><div><label>الجرعة</label><input id="fG" value="'+esc(d.dosage)+'"></div></div>'+
   '<div class="row"><div><label>الشكل</label><input id="fF" value="'+esc(d.form)+'"></div><div><label>رقم الدفعة (Lot)</label><input id="fL" value="'+esc(d.lot)+'"></div></div>'+
   '<div class="row"><div><label>تاريخ الانتهاء</label><input type="month" id="fE" value="'+esc(d.expiry)+'"></div><div><label>عدد العلب</label><input type="number" min="1" id="fQ" value="'+(d.qty||1)+'"></div></div>'+
   '<div class="row" style="margin-top:16px"><button class="p" id="ok">'+(isRem?"إزالة":"إضافة")+'</button><button id="cx">إلغاء</button></div>';
 }
-function read(){return{name:$("fN").value.trim(),dci:$("fD").value.trim(),dosage:$("fG").value.trim(),form:$("fF").value.trim(),lot:$("fL").value.trim(),expiry:$("fE").value,qty:Math.max(1,parseInt($("fQ").value)||1)}}
+function read(){return{name:$("fN").value.trim(),dci:$("fD").value.trim(),dosage:$("fG").value.trim(),form:$("fF").value.trim(),lot:$("fL").value.trim(),expiry:$("fE").value,qty:Math.max(1,parseInt($("fQ").value)||1),img:curImg}}
 function find(d){
   var n=norm(d.name),l=norm(d.lot);
   var c=items.filter(function(i){return norm(i.name)===n&&norm(i.dosage)===norm(d.dosage)});
@@ -118,7 +121,7 @@ function find(d){
 function doAdd(d){
   if(!d.name){return"أدخل اسم الدواء"}
   var x=items.filter(function(i){return norm(i.name)===norm(d.name)&&norm(i.dosage)===norm(d.dosage)&&i.expiry===d.expiry})[0];
-  if(x)x.qty+=d.qty;else{d.id="m"+Date.now()+Math.floor(Math.random()*999);items.push(d)}
+  if(x){x.qty+=d.qty;if(d.img&&!x.img)x.img=d.img}else{d.id="m"+Date.now()+Math.floor(Math.random()*999);items.push(d)}
   save();render();close();return""
 }
 function doRem(d){
@@ -128,8 +131,11 @@ function doRem(d){
 }
 function wire(isRem){
   $("cx").onclick=close;
+  $("fP").onclick=function(){imgCb=function(u){curImg=u;$("fImg").outerHTML='<img id="fImg" class="th" src="'+u+'">'};$("imgf").value="";$("imgf").click()};
   $("ok").onclick=function(){var d=read();var e=isRem?doRem(d):doAdd(d);if(e){$("fm").textContent=e;$("fm").className="msg err"}}
 }
+function attach(it){imgCb=function(u){it.img=u;save();render()};$("imgf").value="";$("imgf").click()}
+function view(it){open('<img src="'+it.img+'" style="width:100%;border-radius:12px"><div class="row" style="margin-top:12px"><button id="chg">تغيير الصورة</button><button class="p" id="cx">إغلاق</button></div>');$("cx").onclick=close;$("chg").onclick=function(){close();attach(it)}}
 function manual(){open(form({},false));wire(false)}
 function shrink(f){return new Promise(function(res,rej){
   var u=URL.createObjectURL(f),im=new Image();
@@ -179,7 +185,7 @@ async function scan(f){
       if(!window.Tesseract)throw{message:"تعذّر تحميل محرك OCR. أضف مفتاح Gemini أو اتصل بالإنترنت."};
       if(!worker)worker=await Tesseract.createWorker("fra");
       var r=await worker.recognize(bl);d=parse(r.data.text||"")}
-    open(form(d,mode==="rem"));wire(mode==="rem");
+    d.img=await small(f).catch(function(){return""});open(form(d,mode==="rem"));wire(mode==="rem");
     if(!d.expiry||!d.name){$("fm").textContent="\u0631\u0627\u062c\u0639 \u0627\u0644\u062d\u0642\u0648\u0644 \u0648\u0623\u0643\u0645\u0644 \u0645\u0627 \u0644\u0645 \u064a\u0642\u0631\u0623\u0647 \u0627\u0644\u062a\u0637\u0628\u064a\u0642.";$("fm").className="msg err"}
   }catch(e){
     open('<h2 style="margin:0 0 6px">\u062a\u0639\u0630\u0651\u0631\u062a \u0627\u0644\u0642\u0631\u0627\u0621\u0629</h2><div class="msg err">'+esc((e&&e.message)||"\u062e\u0637\u0623")+'</div><div class="row"><button class="p" id="mn">\u0625\u062f\u062e\u0627\u0644 \u064a\u062f\u0648\u064a</button><button id="cx">\u0625\u063a\u0644\u0627\u0642</button></div>');
@@ -190,11 +196,12 @@ $("bRem").onclick=function(){mode="rem";$("file").value="";$("file").click()};
 $("bMan").onclick=manual;
 $("file").onchange=function(){if(this.files[0])scan(this.files[0])};
 $("srch").oninput=render;
+$("imgf").onchange=function(){var f=this.files[0];if(f&&imgCb)small(f).then(function(u){imgCb(u)}).catch(function(){alert("تعذّر قراءة الصورة")})};
 $("sheet").onclick=function(e){if(e.target===this)close()};
 $("list").onclick=function(e){
-  var b=e.target.closest("button");if(!b)return;
+  var b=e.target.closest("[data-a]");if(!b)return;
   var it=items.filter(function(i){return i.id===b.dataset.id})[0];if(!it)return;
-  if(b.dataset.a==="p")it.qty++;else{it.qty--;if(it.qty<=0&&confirm("إزالة "+it.name+" من القائمة؟"))items=items.filter(function(i){return i!==it});else if(it.qty<=0)it.qty=1}
+  if(b.dataset.a==="v"){view(it);return}if(b.dataset.a==="i"){attach(it);return}if(b.dataset.a==="p")it.qty++;else{it.qty--;if(it.qty<=0&&confirm("إزالة "+it.name+" من القائمة؟"))items=items.filter(function(i){return i!==it});else if(it.qty<=0)it.qty=1}
   save();render()
 };
 $("bk").onclick=function(){var u=URL.createObjectURL(new Blob([JSON.stringify(items,null,1)],{type:"application/json"})),l=document.createElement("a");l.href=u;l.download="medicines-backup.json";l.click();setTimeout(function(){URL.revokeObjectURL(u)},1000)};
