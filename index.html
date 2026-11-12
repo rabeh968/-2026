@@ -59,7 +59,8 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 <div id="al"></div><input id="srch" placeholder="بحث باسم الدواء أو المادة الفعالة…">
 <div id="list"></div>
 <div class="note">البيانات محفوظة في هذا المتصفح فقط. استعمل «نسخ احتياطي» للحفظ.</div>
-<div class="note"><button id="gt">اختبار الاتصال</button> <button id="gs">⚙︎ مفتاح Gemini</button> <button id="ics">📅 تذكيرات التقويم</button> <button id="bk">نسخ احتياطي</button> <button id="rs">استعادة</button></div>
+<div class="note" id="sy"></div>
+<div class="note"><button id="gt">اختبار الاتصال</button> <button id="gs">⚙︎ مفتاح Gemini</button> <button id="sh">🔗 مشاركة</button> <button id="ics">📅 تذكيرات التقويم</button> <button id="bk">نسخ احتياطي</button> <button id="rs">استعادة</button></div>
 
 <div class="bar">
   <button class="p" id="bAdd">📷 مسح وإضافة</button>
@@ -75,9 +76,77 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script>
 (function(){
-var KEY="meds-v1",curImg="",imgCb=null,srcImg="",cropAR=4/3,formRem=false,editing=null,items=[],mode="add",pending=null;
+var KEY="meds-v1",curImg="",imgCb=null,snap={},sync=null,pT=null,pushing=false,srcImg="",cropAR=4/3,formRem=false,editing=null,items=[],mode="add",pending=null;
 function load(){try{items=JSON.parse(localStorage.getItem(KEY)||"[]")}catch(e){items=[]}}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(items))}catch(e){}}
+function hs(s){return s.length+":"+s.charCodeAt(10)+"."+s.charCodeAt(s.length>>1)+"."+s.charCodeAt(s.length-5)}
+function meta(it){return JSON.stringify([it.name||"",it.dci||"",it.dosage||"",it.form||"",it.lot||"",it.expiry||"",it.qty||0,it.iv||""])}
+function store(){try{localStorage.setItem(KEY,JSON.stringify(items));localStorage.setItem("meds-snap",JSON.stringify(snap))}catch(e){}}
+function setSt(t){var e=$("sy");if(e)e.textContent=t}
+function tm(){return new Date().toLocaleTimeString("ar",{hour:"2-digit",minute:"2-digit"})}
+function save(){
+  items.forEach(function(it){it.iv=it.img?hs(it.img):(it.iv||"");if(sync&&snap[it.id]!==meta(it))it.ts=Date.now()});
+  store();if(sync)schedulePush()}
+function prep(){items.forEach(function(it){if(!it.ts)it.ts=Date.now()})}
+function merge(remote){
+  var chg=false,need=[];
+  Object.keys(remote).forEach(function(id){
+    var r=remote[id],l=items.filter(function(i){return i.id===id})[0];
+    if(!l||(r.ts||0)>(l.ts||0)){
+      var n=Object.assign({},r);n.id=id;
+      if(l&&!r.img&&l.img&&l.iv===r.iv)n.img=l.img;
+      if(l)items[items.indexOf(l)]=n;else items.push(n);
+      snap[id]=meta(n);chg=true;
+      if(!n.img&&n.iv)need.push(id)}});
+  items=items.filter(function(i){if(!remote[i.id]&&snap[i.id]!==undefined){delete snap[i.id];chg=true;return false}return true});
+  if(chg){store();render()}
+  return need}
+function schedulePush(){clearTimeout(pT);pT=setTimeout(push,700)}
+async function push(){
+  pT=null;if(!sync)return;pushing=true;
+  try{
+    var ups=items.filter(function(it){return snap[it.id]!==meta(it)}),dels=Object.keys(snap).filter(function(id){return!items.some(function(i){return i.id===id})});
+    for(var i=0;i<ups.length;i++){var it=ups[i],pv=snap[it.id]?JSON.parse(snap[it.id])[7]:null;await sync.put(it,pv!==(it.iv||"")&&(it.img||pv));snap[it.id]=meta(it)}
+    for(var j=0;j<dels.length;j++){await sync.del(dels[j]);delete snap[dels[j]]}
+    store();setSt("🔄 متزامن · "+tm())
+  }catch(e){setSt("⚠️ تعذّرت المزامنة: "+(e&&e.message||""))}
+  pushing=false;
+  if(sync.lastRemote){var lr=sync.lastRemote;sync.lastRemote=null;merge(lr)}}
+function fbReq(p,m,b){return fetch(sync.base+p+".json",{method:m||"GET",body:b===undefined?undefined:JSON.stringify(b)}).then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json()})}
+function startFb(cfg){
+  sync={base:cfg.u+"/h/"+cfg.c,
+    put:async function(it,imgCh){var o=Object.assign({},it);delete o.img;await fbReq("/items/"+it.id,"PUT",o);if(imgCh){if(it.img)await fbReq("/img/"+it.id,"PUT",it.img);else await fbReq("/img/"+it.id,"DELETE")}},
+    del:async function(id){await fbReq("/items/"+id,"DELETE");await fbReq("/img/"+id,"DELETE")}};
+  prep();schedulePush();pull();
+  setInterval(function(){if(!document.hidden)pull()},20000);
+  document.addEventListener("visibilitychange",function(){if(!document.hidden)pull()})}
+async function pull(){
+  if(!sync||pT||pushing)return;
+  try{
+    var r=await fbReq("/items","GET")||{};Object.keys(r).forEach(function(k){r[k].id=k});
+    var need=merge(r);
+    for(var i=0;i<need.length;i++){var s=await fbReq("/img/"+need[i],"GET"),it=items.filter(function(x){return x.id===need[i]})[0];if(it&&s)it.img=s}
+    if(need.length){store();render()}
+    setSt("🔄 متزامن · "+tm())
+  }catch(e){setSt("⚠️ تعذّرت المزامنة: "+(e&&e.message||""))}}
+function applyLink(t){try{var m=t.match(/#s=([^\s]+)/),c=JSON.parse(atob(decodeURIComponent(m?m[1]:t.trim())));if(c.u&&c.c){localStorage.setItem("meds-cfg",JSON.stringify(c));return c}}catch(e){}return null}
+function openShare(){
+  var cfg=null;try{cfg=JSON.parse(localStorage.getItem("meds-cfg")||"null")}catch(e){}
+  if(!cfg){
+    open('<h2 style="margin:0 0 6px">مشاركة القائمة</h2><div class="msg">الصق رابط قاعدة بيانات Firebase (Realtime Database) ثم فعّل المزامنة.</div><input id="fu" dir="ltr" placeholder="https://اسم-المشروع-default-rtdb.firebaseio.com"><div class="row" style="margin-top:12px"><button class="p" id="fe">تفعيل المزامنة</button><button id="cx">إغلاق</button></div><div class="msg" id="fm"></div><label>لديك رابط مشاركة من شخص آخر؟ الصقه هنا</label><input id="fl" dir="ltr" placeholder="https://…#s=…"><div class="row" style="margin-top:12px"><button id="fk">ربط</button></div>');
+    $("cx").onclick=close;
+    $("fe").onclick=function(){var u=$("fu").value.trim().replace(/\/+$/,"");if(!/^https:\/\/[^\s]+$/.test(u)){$("fm").textContent="الرابط غير صحيح";return}var c={u:u,c:Array.from(crypto.getRandomValues(new Uint8Array(16))).map(function(b){return("0"+b.toString(16)).slice(-2)}).join("")};localStorage.setItem("meds-cfg",JSON.stringify(c));startFb(c);openShare()};
+    $("fk").onclick=function(){var c=applyLink($("fl").value);if(!c){$("fm").textContent="الرابط غير صالح";return}startFb(c);close()};
+    return}
+  var link=location.origin+location.pathname+"#s="+encodeURIComponent(btoa(JSON.stringify(cfg)));
+  open('<h2 style="margin:0 0 6px">المشاركة مفعّلة ✅</h2><div class="msg">أرسل هذا الرابط لزوجتك. من يملك الرابط يستطيع رؤية القائمة وتعديلها.</div><input id="lk" value="'+esc(link)+'" readonly dir="ltr"><div class="row" style="margin-top:12px"><button class="p" id="cp">نسخ / إرسال</button><button id="cx">إغلاق</button></div><div class="row" style="margin-top:8px"><button class="d" id="off">إيقاف المزامنة على هذا الجهاز</button></div>');
+  $("cx").onclick=close;
+  $("cp").onclick=function(){if(navigator.share)navigator.share({url:link,title:"أدوية المنزل"}).catch(function(){});else{$("lk").select();document.execCommand("copy")}};
+  $("off").onclick=function(){if(confirm("إيقاف المزامنة؟ تبقى القائمة محفوظة على هذا الجهاز.")){localStorage.removeItem("meds-cfg");location.reload()}}}
+$("sh").onclick=openShare;
+function initSync(){
+  if(location.hash.indexOf("#s=")===0)applyLink(location.hash);
+  try{var cfg=JSON.parse(localStorage.getItem("meds-cfg")||"null");if(cfg&&cfg.u)startFb(cfg)}catch(e){}}
+
 function $(i){return document.getElementById(i)}
 function esc(s){var d=document.createElement("div");d.textContent=s==null?"":s;return d.innerHTML}
 function norm(s){return String(s||"").toLowerCase().replace(/[^a-z0-9\u0600-\u06ff]/g,"")}
@@ -290,7 +359,7 @@ $("restore").onchange=function(){
   var f=this.files[0];if(!f)return;
   f.text().then(function(t){var a=JSON.parse(t);if(Array.isArray(a)){items=a;save();render()}}).catch(function(){alert("ملف غير صالح")})
 };
-load();render();
+load();try{snap=JSON.parse(localStorage.getItem("meds-snap")||"{}")||{}}catch(e){snap={}}render();initSync();
 })();
 </script>
 </body>
