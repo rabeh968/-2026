@@ -59,7 +59,7 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 <input id="srch" placeholder="بحث باسم الدواء أو المادة الفعالة…">
 <div id="list"></div>
 <div class="note">البيانات محفوظة في هذا المتصفح فقط. استعمل «نسخ احتياطي» للحفظ.</div>
-<div class="note"><button id="bk">نسخ احتياطي</button> <button id="rs">استعادة</button></div>
+<div class="note"><button id="gs">⚙︎ مفتاح Gemini</button> <button id="bk">نسخ احتياطي</button> <button id="rs">استعادة</button></div>
 
 <div class="bar">
   <button class="p" id="bAdd">📷 مسح وإضافة</button>
@@ -151,14 +151,23 @@ function parse(t){
   var cand=(vi>=0?L.slice(vi+1,vi+4):L).filter(function(x){return /^[A-Za-z][A-Za-z0-9 \-]{2,}$/.test(x)&&!/vignette|labor|inpha|prix|ppa|lot|fab|exp/i.test(x)});
   if(cand[0])d.name=cand[0].replace(/\s+\d+\s*(mg|g)?$/i,"");
   return d}
+var PROMPT='هذه صورة علبة دواء (غالبا جزائرية، عليها ملصق vignette). استخرج البيانات وأعد JSON فقط بالشكل: {"name":"الاسم التجاري بحروف لاتينية","dci":"المادة الفعالة","dosage":"مثل 500 mg","form":"الشكل مثل comprimé","lot":"رقم الدفعة LOT","expiry":"YYYY-MM"}. تاريخ الانتهاء هو الحقل EXP أو PER وليس FAB (تاريخ الصنع). إن كان مكتوبا 03/2029 أو 03/29 فالنتيجة 2029-03. إن لم تجد قيمة اتركها نصا فارغا ولا تخمن.';
+function b64(b){return new Promise(function(res){var r=new FileReader();r.onload=function(){res(r.result.split(",")[1])};r.readAsDataURL(b)})}
+async function gem(b,k){
+  var m=localStorage.getItem("gmodel")||"gemini-2.5-flash";
+  var r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+m+":generateContent",{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":k},body:JSON.stringify({contents:[{parts:[{text:PROMPT},{inline_data:{mime_type:"image/jpeg",data:await b64(b)}}]}],generationConfig:{responseMimeType:"application/json",temperature:0}})});
+  var j=await r.json();
+  if(!r.ok)throw{message:(j.error&&j.error.message)||"خطأ من Gemini"};
+  var t=j.candidates[0].content.parts[0].text,d=JSON.parse(t.replace(/```json|```/g,""));
+  d.qty=1;d.name=d.name||"";d.expiry=/^\d{4}-\d{2}$/.test(d.expiry||"")?d.expiry:"";return d}
 async function scan(f){
   open('<h2 style="margin:0">\u062c\u0627\u0631\u064a \u0642\u0631\u0627\u0621\u0629 \u0627\u0644\u0645\u0644\u0635\u0642\u2026</h2><div class="msg" id="pg">\u062a\u062d\u0645\u064a\u0644 \u0645\u062d\u0631\u0643 \u0627\u0644\u0642\u0631\u0627\u0621\u0629 (\u0623\u0648\u0644 \u0645\u0631\u0629 \u0642\u062f \u062a\u0633\u062a\u063a\u0631\u0642 \u0648\u0642\u062a\u0627\u064b)</div>');
   try{
-    if(!window.Tesseract)throw{message:"\u062a\u0639\u0630\u0651\u0631 \u062a\u062d\u0645\u064a\u0644 \u0645\u062d\u0631\u0643 OCR (\u062a\u062d\u062a\u0627\u062c \u0625\u0646\u062a\u0631\u0646\u062a \u0623\u0648\u0644 \u0645\u0631\u0629)"};
-    if(!worker)worker=await Tesseract.createWorker("fra");
-    var b=await shrink(f);
-    var r=await worker.recognize(b);
-    var d=parse(r.data.text||"");
+    var bl=await shrink(f),d,gk=localStorage.getItem("gkey");
+    if(gk){d=await gem(bl,gk)}else{
+      if(!window.Tesseract)throw{message:"تعذّر تحميل محرك OCR. أضف مفتاح Gemini أو اتصل بالإنترنت."};
+      if(!worker)worker=await Tesseract.createWorker("fra");
+      var r=await worker.recognize(bl);d=parse(r.data.text||"")}
     open(form(d,mode==="rem"));wire(mode==="rem");
     if(!d.expiry||!d.name){$("fm").textContent="\u0631\u0627\u062c\u0639 \u0627\u0644\u062d\u0642\u0648\u0644 \u0648\u0623\u0643\u0645\u0644 \u0645\u0627 \u0644\u0645 \u064a\u0642\u0631\u0623\u0647 \u0627\u0644\u062a\u0637\u0628\u064a\u0642.";$("fm").className="msg err"}
   }catch(e){
@@ -178,6 +187,15 @@ $("list").onclick=function(e){
   save();render()
 };
 $("bk").onclick=function(){var u=URL.createObjectURL(new Blob([JSON.stringify(items,null,1)],{type:"application/json"})),l=document.createElement("a");l.href=u;l.download="medicines-backup.json";l.click();setTimeout(function(){URL.revokeObjectURL(u)},1000)};
+$("gs").onclick=function(){
+  var k=prompt("الصق مفتاح Gemini (يُحفظ في هذا المتصفح فقط). اتركه فارغا لحذفه.",localStorage.getItem("gkey")||"");
+  if(k===null)return;k=k.trim();
+  if(!k){localStorage.removeItem("gkey");alert("تم حذف المفتاح. سيُستعمل OCR.");return}
+  localStorage.setItem("gkey",k);
+  var m=prompt("اسم النموذج (غيّره فقط إن توقف القديم):",localStorage.getItem("gmodel")||"gemini-2.5-flash");
+  if(m&&m.trim())localStorage.setItem("gmodel",m.trim());
+  alert("تم الحفظ.")
+};
 $("rs").onclick=function(){$("restore").click()};
 $("restore").onchange=function(){
   var f=this.files[0];if(!f)return;
