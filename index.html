@@ -59,7 +59,7 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 <input id="srch" placeholder="بحث باسم الدواء أو المادة الفعالة…">
 <div id="list"></div>
 <div class="note">البيانات محفوظة في هذا المتصفح فقط. استعمل «نسخ احتياطي» للحفظ.</div>
-<div class="note"><button id="gs">⚙︎ مفتاح Gemini</button> <button id="bk">نسخ احتياطي</button> <button id="rs">استعادة</button></div>
+<div class="note"><button id="gt">اختبار الاتصال</button> <button id="gs">⚙︎ مفتاح Gemini</button> <button id="bk">نسخ احتياطي</button> <button id="rs">استعادة</button></div>
 
 <div class="bar">
   <button class="p" id="bAdd">📷 مسح وإضافة</button>
@@ -198,6 +198,17 @@ $("list").onclick=function(e){
   save();render()
 };
 $("bk").onclick=function(){var u=URL.createObjectURL(new Blob([JSON.stringify(items,null,1)],{type:"application/json"})),l=document.createElement("a");l.href=u;l.download="medicines-backup.json";l.click();setTimeout(function(){URL.revokeObjectURL(u)},1000)};
+$("gt").onclick=async function(){
+  var k=localStorage.getItem("gkey");
+  if(!k){alert("لم تُدخل مفتاحا بعد. اضغط ⚙︎ مفتاح Gemini.");return}
+  try{
+    var r=await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=100",{headers:{"x-goog-api-key":k}});
+    var j=await r.json().catch(function(){return{}});
+    if(!r.ok){alert("رفض Google الطلب: "+r.status+"\n"+((j.error&&j.error.message)||""));return}
+    var n=(j.models||[]).map(function(m){return m.name.replace("models/","")}).filter(function(x){return /gemini/.test(x)&&/flash/.test(x)&&!/image|tts|live|audio/.test(x)});
+    alert("الاتصال ناجح ✅ المفتاح يعمل.\nنماذج Flash المتاحة:\n"+n.slice(0,12).join("\n"))
+  }catch(e){alert("لا يصل المتصفح إلى Google: "+(e&&e.message||"network")+"\nجرّب تعطيل VPN/Private Relay أو حاجب الإعلانات أو غيّر الشبكة.")}
+};
 $("gs").onclick=function(){
   var k=prompt("الصق مفتاح Gemini (يُحفظ في هذا المتصفح فقط). اتركه فارغا لحذفه.",localStorage.getItem("gkey")||"");
   if(k===null)return;k=k.trim();
