@@ -77,10 +77,8 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 <script>
 (function(){
 var KEY="meds-v1",curImg="",imgCb=null,snap={},sync=null,pT=null,pushing=false,srcImg="",cropAR=4/3,formRem=false,editing=null,items=[],mode="add",pending=null;
-var DEFAULT_FB_URL = "https://medecine2026-7220e-default-rtdb.firebaseio.com/";
-
 function load(){try{items=JSON.parse(localStorage.getItem(KEY)||"[]")}catch(e){items=[]}}
-function hs(s){return s.length+":"+s.charCodeAt(10)."."+s.charCodeAt(s.length>>1)."."+s.charCodeAt(s.length-5)}
+function hs(s){return s.length+":"+s.charCodeAt(10)+"."+s.charCodeAt(s.length>>1)+"."+s.charCodeAt(s.length-5)}
 function meta(it){return JSON.stringify([it.name||"",it.dci||"",it.dosage||"",it.form||"",it.lot||"",it.expiry||"",it.qty||0,it.iv||""])}
 function store(){try{localStorage.setItem(KEY,JSON.stringify(items));localStorage.setItem("meds-snap",JSON.stringify(snap))}catch(e){}}
 function setSt(t){var e=$("sy");if(e)e.textContent=t}
@@ -115,7 +113,7 @@ async function push(){
   if(sync.lastRemote){var lr=sync.lastRemote;sync.lastRemote=null;merge(lr)}}
 function fbReq(p,m,b){return fetch(sync.base+p+".json",{method:m||"GET",body:b===undefined?undefined:JSON.stringify(b)}).then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json()})}
 function startFb(cfg){
-  sync={base:cfg.u.replace(/\/+$/,"")+"/h/"+cfg.c,
+  sync={base:cfg.u+"/h/"+cfg.c,
     put:async function(it,imgCh){var o=Object.assign({},it);delete o.img;await fbReq("/items/"+it.id,"PUT",o);if(imgCh){if(it.img)await fbReq("/img/"+it.id,"PUT",it.img);else await fbReq("/img/"+it.id,"DELETE")}},
     del:async function(id){await fbReq("/items/"+id,"DELETE");await fbReq("/img/"+id,"DELETE")}};
   prep();schedulePush();pull();
@@ -134,7 +132,7 @@ function applyLink(t){try{var m=t.match(/#s=([^\s]+)/),c=JSON.parse(atob(decodeU
 function openShare(){
   var cfg=null;try{cfg=JSON.parse(localStorage.getItem("meds-cfg")||"null")}catch(e){}
   if(!cfg){
-    open('<h2 style="margin:0 0 6px">مشاركة القائمة</h2><div class="msg">الصق رابط قاعدة بيانات Firebase (Realtime Database) ثم فعّل المزامنة.</div><input id="fu" dir="ltr" value="'+DEFAULT_FB_URL+'" placeholder="https://اسم-المشروع-default-rtdb.firebaseio.com"><div class="row" style="margin-top:12px"><button class="p" id="fe">تفعيل المزامنة</button><button id="cx">إغلاق</button></div><div class="msg" id="fm"></div><label>لديك رابط مشاركة من شخص آخر؟ الصقه هنا</label><input id="fl" dir="ltr" placeholder="https://…#s=…"><div class="row" style="margin-top:12px"><button id="fk">ربط</button></div>');
+    open('<h2 style="margin:0 0 6px">مشاركة القائمة</h2><div class="msg">الصق رابط قاعدة بيانات Firebase (Realtime Database) ثم فعّل المزامنة.</div><input id="fu" dir="ltr" placeholder="https://اسم-المشروع-default-rtdb.firebaseio.com"><div class="row" style="margin-top:12px"><button class="p" id="fe">تفعيل المزامنة</button><button id="cx">إغلاق</button></div><div class="msg" id="fm"></div><label>لديك رابط مشاركة من شخص آخر؟ الصقه هنا</label><input id="fl" dir="ltr" placeholder="https://…#s=…"><div class="row" style="margin-top:12px"><button id="fk">ربط</button></div>');
     $("cx").onclick=close;
     $("fe").onclick=function(){var u=$("fu").value.trim().replace(/\/+$/,"");if(!/^https:\/\/[^\s]+$/.test(u)){$("fm").textContent="الرابط غير صحيح";return}var c={u:u,c:Array.from(crypto.getRandomValues(new Uint8Array(16))).map(function(b){return("0"+b.toString(16)).slice(-2)}).join("")};localStorage.setItem("meds-cfg",JSON.stringify(c));startFb(c);openShare()};
     $("fk").onclick=function(){var c=applyLink($("fl").value);if(!c){$("fm").textContent="الرابط غير صالح";return}startFb(c);close()};
@@ -147,14 +145,7 @@ function openShare(){
 $("sh").onclick=openShare;
 function initSync(){
   if(location.hash.indexOf("#s=")===0)applyLink(location.hash);
-  try{
-    var cfg=JSON.parse(localStorage.getItem("meds-cfg")||"null");
-    if(!cfg){
-      cfg={u:DEFAULT_FB_URL, c:"default-room"};
-      localStorage.setItem("meds-cfg",JSON.stringify(cfg));
-    }
-    if(cfg&&cfg.u)startFb(cfg)
-  }catch(e){}}
+  try{var cfg=JSON.parse(localStorage.getItem("meds-cfg")||"null");if(cfg&&cfg.u)startFb(cfg)}catch(e){}}
 
 function $(i){return document.getElementById(i)}
 function esc(s){var d=document.createElement("div");d.textContent=s==null?"":s;return d.innerHTML}
@@ -333,7 +324,7 @@ $("list").onclick=function(e){
   save();render()
 };
 function icsText(){
-  var n=new Date(),p=function(x){return("0"+x).slice(-2)},st=""+n.getUTCFullYear()+p(n.getUTCMonth()+1)+p(n.getUTCDate())+"T"+p(n.getUTCHours())+p(n.getUTCMinutes())+p(n.getUTCSeconds())+"Z",L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//meds//AR","CALSCALE:GREGORIAN"],c=0;
+  var n=new Date(),p=function(x){return("0"+x).slice(-2)},st=""+n.getUTCFullYear()+p(n.getUTCMonth()+1)+p(n.getUTCDate())+"T"+p(n.getUTCHours())+p(n.getUTCMinutes())+"00Z",L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//meds//AR","CALSCALE:GREGORIAN"],c=0;
   items.forEach(function(it){
     var e=endOf(it.expiry);if(!e||e<n)return;c++;
     var nx=new Date(e.getFullYear(),e.getMonth(),e.getDate()+1),f=function(d){return""+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())},t="انتهاء صلاحية: "+it.name+(it.dosage?" "+it.dosage:"");
