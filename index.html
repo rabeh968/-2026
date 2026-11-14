@@ -7,8 +7,8 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#17795c">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="أدوية">
-<title>أدوية المنزل</title>
+<meta name="apple-mobile-web-app-title" content="صيدلية البيت">
+<title>صيدلية البيت</title>
 <style>
 :root{--bg:#f6f7f5;--card:#fff;--tx:#1d2b25;--mut:#68766f;--pri:#17795c;--pri-t:#fff;--bd:#e1e6e2;--red:#c0392b;--org:#c77a0a;--grn:#17795c;--redb:#fbe9e6;--orgb:#fdf1de;--grnb:#e4f3ee;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121816;--card:#1b2420;--tx:#e8efeb;--mut:#92a29a;--pri:#3fb48f;--pri-t:#08150f;--bd:#2a3731;--red:#ff8576;--org:#f0b45a;--grn:#5fcfa9;--redb:#3a1f1b;--orgb:#3a2c14;--grnb:#16322a}}
@@ -49,7 +49,7 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 </style>
 </head>
 <body>
-<div class="hd"><div id="avw" class="avw"></div><div><h1>💊 أدوية المنزل</h1><div class="sub" style="margin:2px 0 0">قائمة الأدوية المتوفرة مع تواريخ انتهاء الصلاحية</div></div></div>
+<div class="hd"><div id="avw" class="avw"></div><div><h1>💊 صيدلية البيت</h1><div class="sub" style="margin:2px 0 0">قائمة الأدوية المتوفرة مع تواريخ انتهاء الصلاحية</div></div></div>
 <div class="stats">
   <div class="st s-r"><b id="cR">0</b>منتهية</div>
   <div class="st s-o"><b id="cO">0</b>تنتهي خلال 90 يوماً</div>
@@ -141,7 +141,7 @@ function openShare(){
   var link=location.origin+location.pathname+"#s="+encodeURIComponent(btoa(JSON.stringify(cfg)));
   open('<h2 style="margin:0 0 6px">المشاركة مفعّلة ✅</h2><div class="msg">أرسل هذا الرابط لزوجتك. من يملك الرابط يستطيع رؤية القائمة وتعديلها.</div><input id="lk" value="'+esc(link)+'" readonly dir="ltr"><div class="row" style="margin-top:12px"><button class="p" id="cp">نسخ / إرسال</button><button id="cx">إغلاق</button></div><div class="row" style="margin-top:8px"><button class="d" id="off">إيقاف المزامنة على هذا الجهاز</button></div>');
   $("cx").onclick=close;
-  $("cp").onclick=function(){if(navigator.share)navigator.share({url:link,title:"أدوية المنزل"}).catch(function(){});else{$("lk").select();document.execCommand("copy")}};
+  $("cp").onclick=function(){if(navigator.share)navigator.share({url:link,title:"صيدلية البيت"}).catch(function(){});else{$("lk").select();document.execCommand("copy")}};
   $("off").onclick=function(){if(confirm("إيقاف المزامنة؟ تبقى القائمة محفوظة على هذا الجهاز.")){localStorage.removeItem("meds-cfg");location.reload()}}}
 $("sh").onclick=openShare;
 function initSync(){
@@ -343,7 +343,7 @@ async function buildPdf(){
   var F="font-family:system-ui,-apple-system,'Segoe UI',Tahoma,Arial,sans-serif;direction:rtl;color:#1d2b25;";
   var dt=new Date().toLocaleDateString("fr-FR");
   function chip(n,t,c,b){return '<div style="flex:1;background:'+b+';color:'+c+';border-radius:12px;padding:10px;text-align:center"><div style="font-size:22px;font-weight:800">'+n+'</div><div style="font-size:12px">'+t+'</div></div>'}
-  var HEAD='<div style="background:#17795c;color:#fff;border-radius:14px;padding:18px 22px;display:flex;justify-content:space-between;align-items:center"><div style="display:flex;align-items:center;gap:12px">'+(AV?'<img src="'+AV+'" style="width:66px;height:78px;border-radius:12px;object-fit:cover;object-position:top;border:3px solid #fff">':'')+'<div><div style="font-size:26px;font-weight:800">قائمة أدوية المنزل</div><div style="font-size:13px;opacity:.9;margin-top:4px">تاريخ التقرير: <bdi>'+dt+'</bdi></div></div></div><div style="text-align:center"><div style="font-size:34px;font-weight:800">'+list.length+'</div><div style="font-size:12px">دواء</div></div></div><div style="display:flex;gap:8px;margin:12px 0">'+chip(cnt[2],"صالحة","#17795c","#e4f3ee")+chip(cnt[1],"تنتهي خلال 90 يوماً","#c77a0a","#fdf1de")+chip(cnt[0],"منتهية","#c0392b","#fbe9e6")+chip(cnt[3],"بلا تاريخ","#68766f","#eef1ef")+'</div>';
+  var HEAD='<div style="background:#17795c;color:#fff;border-radius:14px;padding:18px 22px;display:flex;justify-content:space-between;align-items:center"><div style="display:flex;align-items:center;gap:12px">'+(AV?'<img src="'+AV+'" style="width:66px;height:78px;border-radius:12px;object-fit:cover;object-position:top;border:3px solid #fff">':'')+'<div><div style="font-size:26px;font-weight:800">صيدلية البيت — قائمة الأدوية</div><div style="font-size:13px;opacity:.9;margin-top:4px">تاريخ التقرير: <bdi>'+dt+'</bdi></div></div></div><div style="text-align:center"><div style="font-size:34px;font-weight:800">'+list.length+'</div><div style="font-size:12px">دواء</div></div></div><div style="display:flex;gap:8px;margin:12px 0">'+chip(cnt[2],"صالحة","#17795c","#e4f3ee")+chip(cnt[1],"تنتهي خلال 90 يوماً","#c77a0a","#fdf1de")+chip(cnt[0],"منتهية","#c0392b","#fbe9e6")+chip(cnt[3],"بلا تاريخ","#68766f","#eef1ef")+'</div>';
   var cs='padding:0 6px;text-align:center;';
   var COLS='<div style="display:flex;align-items:center;background:#f1f4f2;border-radius:8px;padding:7px 10px;font-size:11px;color:#5b6a63;font-weight:700"><div style="width:96px;'+cs+'">الصورة</div><div style="flex:1;padding:0 6px">الدواء</div><div style="width:84px;'+cs+'">الدفعة</div><div style="width:84px;'+cs+'">الانتهاء</div><div style="width:46px;'+cs+'">العدد</div><div style="width:112px;'+cs+'">الحالة</div></div>';
   function row(it){
@@ -355,7 +355,7 @@ async function buildPdf(){
   list.forEach(function(it){
     p.insertAdjacentHTML("beforeend",row(it));var r=p.lastElementChild;
     if(r.getBoundingClientRect().bottom-p.getBoundingClientRect().top>H-60){r.remove();p=np(false);p.insertAdjacentHTML("beforeend",row(it))}});
-  pages.forEach(function(pg,i){pg.insertAdjacentHTML("beforeend",'<div style="position:absolute;bottom:20px;left:36px;right:36px;display:flex;justify-content:space-between;font-size:11px;color:#8a9892;border-top:1px solid #e4e9e6;padding-top:8px"><span>أدوية المنزل</span><span><bdi>'+(i+1)+' / '+pages.length+'</bdi></span></div>')});
+  pages.forEach(function(pg,i){pg.insertAdjacentHTML("beforeend",'<div style="position:absolute;bottom:20px;left:36px;right:36px;display:flex;justify-content:space-between;font-size:11px;color:#8a9892;border-top:1px solid #e4e9e6;padding-top:8px"><span>صيدلية البيت</span><span><bdi>'+(i+1)+' / '+pages.length+'</bdi></span></div>')});
   await Promise.all(Array.from(wrap.querySelectorAll("img")).map(function(i){return i.decode?i.decode().catch(function(){}):0}));
   var pdf=new window.jspdf.jsPDF({unit:"pt",format:"a4"});
   for(var i=0;i<pages.length;i++){var c=await html2canvas(pages[i],{scale:2,backgroundColor:"#ffffff",useCORS:true});if(i)pdf.addPage();pdf.addImage(c.toDataURL("image/jpeg",.92),"JPEG",0,0,595.28,841.89)}
