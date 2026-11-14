@@ -162,9 +162,9 @@ function render(){
   var arr=items.slice().sort(function(a,b){return String(a.expiry).localeCompare(String(b.expiry))});
   arr.forEach(function(it){
     var d=days(it.expiry);if(d!=null&&d<0){r+=it.qty;ER.push(it.name)}else if(d!=null&&d<=90){o+=it.qty;EO.push(it.name+" ("+d+" يوم)")}else g+=it.qty;
-    if(q&&norm(it.name+it.dci).indexOf(q)<0)return;
+    if(q&&norm(it.name+it.dci+((cls(it)||{}).u||"")+((cls(it)||{}).g||"")).indexOf(q)<0)return;
     var s=status(it.expiry);
-    h+='<div class="card">'+thumb(it)+'<div class="m" data-a="e" data-id="'+it.id+'"><div class="nm"><bdi>'+esc(it.name)+(it.dosage?" "+esc(it.dosage):"")+'</bdi></div><div class="dt">'+esc(it.dci||"")+(it.form?" · "+esc(it.form):"")+'</div><div class="dt">الصلاحية: '+fmt(it.expiry)+(it.lot?" · lot "+esc(it.lot):"")+'</div><div style="margin-top:6px"><span class="badge '+s[0]+'">'+s[1]+'</span></div></div>'+
+    h+='<div class="card">'+thumb(it)+'<div class="m" data-a="e" data-id="'+it.id+'"><div class="nm"><bdi>'+esc(it.name)+(it.dosage?" "+esc(it.dosage):"")+'</bdi></div><div class="dt">'+esc(it.dci||"")+(it.form?" · "+esc(it.form):"")+'</div>'+usesLine(it)+'<div class="dt">الصلاحية: '+fmt(it.expiry)+(it.lot?" · lot "+esc(it.lot):"")+'</div><div style="margin-top:6px"><span class="badge '+s[0]+'">'+s[1]+'</span></div></div>'+
     '<div class="q"><button data-a="m" data-id="'+it.id+'">−</button><b>'+it.qty+'</b><button data-a="p" data-id="'+it.id+'">+</button></div></div>';
   });
   $("list").innerHTML=h||'<div class="empty">لا توجد أدوية بعد.<br>اضغط «مسح وإضافة» وصوّر ملصق العلبة.</div>';
@@ -347,9 +347,9 @@ async function buildPdf(){
   var cs='padding:0 6px;text-align:center;';
   var COLS='<div style="display:flex;align-items:center;background:#f1f4f2;border-radius:8px;padding:7px 10px;font-size:11px;color:#5b6a63;font-weight:700"><div style="width:96px;'+cs+'">الصورة</div><div style="flex:1;padding:0 6px">الدواء</div><div style="width:84px;'+cs+'">الدفعة</div><div style="width:84px;'+cs+'">الانتهاء</div><div style="width:46px;'+cs+'">العدد</div><div style="width:112px;'+cs+'">الحالة</div></div>';
   function row(it){
-    var s=stOf(it.expiry),ex=it.expiry?fmt(it.expiry):"—";
+    var c=cls(it),s=stOf(it.expiry),ex=it.expiry?fmt(it.expiry):"—";
     var im=it.img?'<img src="'+it.img+'" style="height:64px;max-width:92px;border-radius:7px;object-fit:cover">':'<div style="height:64px;width:64px;border-radius:7px;background:#eef1ef;margin:0 auto"></div>';
-    return '<div style="display:flex;align-items:center;padding:8px 10px;border-bottom:1px solid #e4e9e6;min-height:78px"><div style="width:96px;text-align:center">'+im+'</div><div style="flex:1;padding:0 6px"><div style="font-size:15px;font-weight:800"><bdi>'+esc(it.name)+(it.dosage?" "+esc(it.dosage):"")+'</bdi></div><div style="font-size:12px;color:#5b6a63;margin-top:3px"><bdi>'+esc([it.dci,it.form].filter(Boolean).join(" · "))+'</bdi></div></div><div style="width:84px;font-size:12px;'+cs+'"><bdi>'+esc(it.lot||"—")+'</bdi></div><div style="width:84px;font-size:14px;font-weight:800;'+cs+'"><bdi>'+ex+'</bdi></div><div style="width:46px;font-size:14px;'+cs+'">'+(it.qty||1)+'</div><div style="width:112px;'+cs+'"><span style="display:inline-block;background:'+s[1]+';color:'+s[0]+';border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700">'+s[2]+'</span></div></div>'}
+    return '<div style="display:flex;align-items:center;padding:8px 10px;border-bottom:1px solid #e4e9e6;min-height:78px"><div style="width:96px;text-align:center">'+im+'</div><div style="flex:1;padding:0 6px"><div style="font-size:15px;font-weight:800"><bdi>'+esc(it.name)+(it.dosage?" "+esc(it.dosage):"")+'</bdi></div><div style="font-size:12px;color:#5b6a63;margin-top:3px"><bdi>'+esc([it.dci,it.form].filter(Boolean).join(" · "))+'</bdi></div>'+(c?'<div style="font-size:12px;color:#17795c;font-weight:700;margin-top:3px"><bdi>'+esc(c.u)+'</bdi></div>':'')+'</div><div style="width:84px;font-size:12px;'+cs+'"><bdi>'+esc(it.lot||"—")+'</bdi></div><div style="width:84px;font-size:14px;font-weight:800;'+cs+'"><bdi>'+ex+'</bdi></div><div style="width:46px;font-size:14px;'+cs+'">'+(it.qty||1)+'</div><div style="width:112px;'+cs+'"><span style="display:inline-block;background:'+s[1]+';color:'+s[0]+';border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700">'+s[2]+'</span></div></div>'}
   function np(first){var p=document.createElement("div");p.style.cssText="width:"+W+"px;height:"+H+"px;box-sizing:border-box;padding:34px 36px 56px;background:#fff;position:relative;overflow:hidden;"+F;p.innerHTML=(first?HEAD:"")+COLS;wrap.appendChild(p);pages.push(p);return p}
   var p=np(true);
   list.forEach(function(it){
@@ -400,6 +400,7 @@ var DICT=[
 [/amoxicilline|augmentin|azithromycine|ciprofloxacine|clarithromycine|c[eé]fixime/i,["عدوى (مضادات حيوية)","مضاد حيوي للعدوى البكتيرية","بوصفة طبية فقط، ويكمل كامل المدة"]],
 [/ambroxol|bromhexine|ac[eé]tylcyst[eé]ine|dextrom[eé]thorphane|salbutamol|sirop/i,["الجهاز التنفسي والسعال","لتخفيف السعال أو الإفرازات أو ضيق التنفس حسب الدواء","إن استمر السعال أكثر من أسبوع أو صاحبته حمى شديدة راجع الطبيب"]],
 [/vitamine|zinc|\bfer\b|calcium|magn[eé]sium|oméga/i,["فيتامينات ومكملات","مكمل غذائي","لا تتجاوز الجرعة المكتوبة على العلبة"]]];
+function usesLine(it){var c=cls(it);return c?'<div class="dt" style="color:var(--pri);font-weight:600"><bdi>'+esc(c.u)+'</bdi></div>':''}
 function ckey(it){return norm((it.dci||"")+(it.name||""))}
 function cmap(){try{return JSON.parse(localStorage.getItem("meds-cls")||"{}")||{}}catch(e){return{}}}
 function cls(it){var t=(it.dci||"")+" "+(it.name||"");for(var i=0;i<DICT.length;i++)if(DICT[i][0].test(t)){var d=DICT[i][1];return{g:d[0],u:d[1],c:d[2]}}return cmap()[ckey(it)]||null}
