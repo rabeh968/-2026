@@ -59,7 +59,7 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 <div id="list"></div>
 <div class="note">البيانات محفوظة في هذا المتصفح فقط. استعمل «نسخ احتياطي» للحفظ.</div>
 <div class="note" id="sy"></div>
-<div class="note"><button id="gt">اختبار الاتصال</button> <button id="gs">⚙︎ مفتاح Gemini</button> <button id="sh">🔗 مشاركة</button> <button id="pdf">📄 تصدير PDF</button> <button id="ics">📅 تذكيرات التقويم</button> <button id="bk">نسخ احتياطي</button> <button id="rs">استعادة</button></div>
+<div class="note"><button id="gt">اختبار الاتصال</button> <button id="gs">⚙︎ مفتاح Gemini</button> <button id="sh">🔗 مشاركة</button> <button id="cls">🧠 تصنيف الأدوية</button> <button id="pdf">📄 تصدير PDF</button> <button id="ics">📅 تذكيرات التقويم</button> <button id="bk">نسخ احتياطي</button> <button id="rs">استعادة</button></div>
 
 <div class="bar">
   <button class="p" id="bAdd">📷 مسح وإضافة</button>
@@ -376,6 +376,61 @@ $("avw").onclick=function(){
   if(!AV){pickAv();return}
   open('<img src="'+AV+'" style="width:70%;display:block;margin:0 auto;border-radius:18px"><div class="row" style="margin-top:14px"><button id="avc">تغيير الصورة</button><button id="avr">الافتراضية</button><button class="d" id="avd">إزالة</button><button id="cx">إغلاق</button></div>');
   $("cx").onclick=close;$("avc").onclick=function(){close();pickAv()};$("avr").onclick=function(){try{localStorage.removeItem("meds-av")}catch(e){}AV=DEF;showAv();close()};$("avd").onclick=function(){AV="";try{localStorage.setItem("meds-av","-")}catch(e){}showAv();close()}};
+async function aiJson(p){
+  var k=localStorage.getItem("gkey");if(!k)throw{message:"أضف مفتاح Gemini من زر ⚙︎ أولاً لاستعمال هذه الميزة"};
+  var pick=localStorage.getItem("gmodel"),ms=[pick,"gemini-3.6-flash","gemini-2.5-flash","gemini-3.8-flash"].filter(function(x,i,a){return x&&a.indexOf(x)===i}),last="خطأ من Gemini",body=JSON.stringify({contents:[{parts:[{text:p}]}],generationConfig:{responseMimeType:"application/json",temperature:.2}});
+  for(var i=0;i<ms.length;i++){
+    try{
+      var r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+ms[i]+":generateContent",{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":k},body:body}),j=await r.json().catch(function(){return{}});
+      if(r.ok)return JSON.parse(j.candidates[0].content.parts[0].text.replace(/```json|```/g,""));
+      last=(j.error&&j.error.message)||last;
+      if(r.status===400||r.status===401||r.status===403)throw{message:last,fatal:1}
+    }catch(e){if(e&&e.fatal)throw e;last=(e&&e.message)||last;await new Promise(function(z){setTimeout(z,1200)})}}
+  throw{message:last}}
+var GRP=["ألم وحمى","حساسية","المعدة والهضم","الجلد والفطريات","عدوى (مضادات حيوية)","الجهاز التنفسي والسعال","فيتامينات ومكملات","أخرى"];
+var DICT=[
+[/parac[eé]tamol|doliprane|paralgan|sabramol|efferalgan|dafalgan/i,["ألم وحمى","مسكن للألم وخافض للحرارة","لا تجمعه مع دواء آخر يحتوي باراسيتامول، والإفراط يضر الكبد"]],
+[/ibuprof[eè]ne|xydol|brufen|advil|nurofen/i,["ألم وحمى","مضاد التهاب ومسكن وخافض للحرارة","يؤخذ مع الأكل، ويتجنب في قرحة المعدة والحمل وأمراض الكلى إلا بإذن الطبيب"]],
+[/aspirin|ac[ei]de ac[eé]tylsalicylique|aspegic/i,["ألم وحمى","مسكن وخافض للحرارة ومميّع للدم","لا يعطى للأطفال دون استشارة الطبيب، وقد يهيّج المعدة"]],
+[/om[eé]prazole|pantoprazole|[eé]som[eé]prazole|zimor|mopral/i,["المعدة والهضم","يخفف حموضة المعدة والارتجاع وقرحة المعدة","للاستعمال لمدة محددة بتوجيه طبي"]],
+[/smecta|diosmectite|spasfon|phloroglucinol|domp[eé]ridone|lop[eé]ramide/i,["المعدة والهضم","للإسهال أو التقلصات أو الغثيان حسب الدواء","إن استمرت الأعراض أكثر من يومين راجع الطبيب"]],
+[/desloratadine|loratadine|c[eé]tirizine|deslor|aerius|clarityne|zyrtec/i,["حساسية","مضاد للهستامين لأعراض الحساسية والرشح التحسسي والحكة","قد يسبب نعاساً خفيفاً عند بعض الأشخاص"]],
+[/miconazole|daktazol|clotrimazole|fluconazole|k[eé]toconazole/i,["الجلد والفطريات","مضاد فطري لفطريات الفم أو الجلد حسب شكل الدواء","قد يتداخل مع بعض الأدوية مثل مميعات الدم، استشر الصيدلي"]],
+[/b[eé]tam[eé]thasone|betasone|hydrocortisone|clobetasol|diprosone/i,["الجلد والفطريات","كورتيكوستيرويد موضعي لالتهاب الجلد والأكزيما والحكة","لا يوضع على الوجه أو لمدة طويلة أو على جلد مصاب بعدوى إلا بإشراف الطبيب"]],
+[/amoxicilline|augmentin|azithromycine|ciprofloxacine|clarithromycine|c[eé]fixime/i,["عدوى (مضادات حيوية)","مضاد حيوي للعدوى البكتيرية","بوصفة طبية فقط، ويكمل كامل المدة"]],
+[/ambroxol|bromhexine|ac[eé]tylcyst[eé]ine|dextrom[eé]thorphane|salbutamol|sirop/i,["الجهاز التنفسي والسعال","لتخفيف السعال أو الإفرازات أو ضيق التنفس حسب الدواء","إن استمر السعال أكثر من أسبوع أو صاحبته حمى شديدة راجع الطبيب"]],
+[/vitamine|zinc|\bfer\b|calcium|magn[eé]sium|oméga/i,["فيتامينات ومكملات","مكمل غذائي","لا تتجاوز الجرعة المكتوبة على العلبة"]]];
+function ckey(it){return norm((it.dci||"")+(it.name||""))}
+function cmap(){try{return JSON.parse(localStorage.getItem("meds-cls")||"{}")||{}}catch(e){return{}}}
+function cls(it){var t=(it.dci||"")+" "+(it.name||"");for(var i=0;i<DICT.length;i++)if(DICT[i][0].test(t)){var d=DICT[i][1];return{g:d[0],u:d[1],c:d[2]}}return cmap()[ckey(it)]||null}
+function openCls(){
+  var by={},un=[];
+  items.forEach(function(it){var c=cls(it);if(!c){un.push(it);return}(by[c.g]=by[c.g]||[]).push([it,c])});
+  var h='<h2 style="margin:0 0 4px">🧠 تصنيف الأدوية</h2><div class="msg">معلومات عامة عن الاستعمال الشائع وليست وصفة طبية. استشر الطبيب أو الصيدلي قبل أي استعمال، خاصة للأطفال والحوامل ومرضى الكبد والكلى.</div><div class="row" style="align-items:center"><div><input id="qc" placeholder="ماذا أستعمل لـ… (صداع، حساسية، حرقة)؟"></div><button class="p" id="qb" style="flex:none">اسأل</button></div><div id="qr"></div>';
+  GRP.concat(Object.keys(by).filter(function(g){return GRP.indexOf(g)<0})).forEach(function(g){
+    if(!by[g])return;
+    h+='<h3 style="margin:14px 0 4px;font-size:15px">'+esc(g)+'</h3>'+by[g].map(function(x){var it=x[0],c=x[1],s=status(it.expiry);return '<div class="card" style="margin:6px 0"><div class="m"><div class="nm"><bdi>'+esc(it.name+(it.dosage?" "+it.dosage:""))+'</bdi></div><div class="dt">'+esc(c.u)+'</div><div class="dt" style="color:var(--org)">⚠️ '+esc(c.c)+'</div><div style="margin-top:6px"><span class="badge '+s[0]+'">'+s[1]+'</span></div></div></div>'}).join("")});
+  if(un.length)h+='<h3 style="margin:14px 0 4px;font-size:15px">غير مصنّف</h3><div class="dt"><bdi>'+esc(un.map(function(i){return i.name}).join("، "))+'</bdi></div><button id="ai" style="width:100%;margin-top:8px">تصنيف بالذكاء الاصطناعي ('+un.length+')</button>';
+  h+='<div class="row" style="margin-top:16px"><button id="cx">إغلاق</button></div>';
+  open(h);$("cx").onclick=close;
+  $("qb").onclick=async function(){
+    var q=$("qc").value.trim();if(!q)return;
+    $("qr").innerHTML='<div class="msg">جاري التحليل…</div>';
+    try{
+      var list=items.map(function(it){var d=days(it.expiry);return it.name+(it.dosage?" "+it.dosage:"")+" ("+(it.dci||"")+")"+(d!=null&&d<0?" [منتهي الصلاحية]":"")}).join("\n");
+      var r=await aiJson('أنت مساعد صيدلاني عام. لدى المستخدم هذه الأدوية في المنزل:\n'+list+'\n\nالمستخدم يسأل عن: "'+q+'".\nأعد JSON فقط بالشكل {"matches":[{"name":"اسم الدواء من القائمة فقط","why":"سبب مناسبته باختصار","caution":"أهم تحذير باختصار"}],"advice":"نصيحة قصيرة ومتى يجب مراجعة الطبيب"}.\nالقواعد: اختر من القائمة فقط؛ لا تقترح أي دواء منتهي الصلاحية؛ لا تذكر جرعات؛ إن لم يوجد دواء مناسب اترك matches فارغة؛ للأعراض الخطيرة أو الأطفال الصغار أو الحوامل انصح بمراجعة الطبيب أولاً. اكتب بالعربية.');
+      var m=(r&&r.matches)||[];
+      $("qr").innerHTML='<div style="margin:10px 0">'+(m.length?m.map(function(x){return '<div class="card" style="margin:6px 0"><div class="m"><div class="nm"><bdi>'+esc(x.name)+'</bdi></div><div class="dt">'+esc(x.why||"")+'</div><div class="dt" style="color:var(--org)">⚠️ '+esc(x.caution||"")+'</div></div></div>'}).join(""):'<div class="msg">لا يوجد في قائمتك دواء مناسب لذلك.</div>')+(r&&r.advice?'<div class="al s-o">'+esc(r.advice)+'</div>':'')+'</div>'
+    }catch(e){$("qr").innerHTML='<div class="msg err">'+esc((e&&e.message)||"تعذّر التحليل")+'</div>'}};
+  if($("ai"))$("ai").onclick=async function(){
+    this.disabled=true;this.textContent="جاري التصنيف…";
+    try{
+      var r=await aiJson('صنّف هذه الأدوية حسب الاستعمال الشائع:\n'+un.map(function(i){return i.name+(i.dosage?" "+i.dosage:"")+" ("+(i.dci||"")+")"}).join("\n")+'\nأعد JSON مصفوفة فقط [{"name":"","g":"واحدة بالضبط من: '+GRP.join(" | ")+'","u":"الاستعمال الشائع باختصار","c":"أهم تحذير باختصار"}] بالعربية وبدون جرعات.');
+      var arr=Array.isArray(r)?r:((r&&(r.items||r.medicines||r.result))||[]),m=cmap();
+      un.forEach(function(it,i){var x=arr.filter(function(y){return norm(y.name)===norm(it.name)})[0]||arr[i];if(x&&x.g)m[ckey(it)]={g:x.g,u:x.u||"",c:x.c||""}});
+      localStorage.setItem("meds-cls",JSON.stringify(m));openCls()
+    }catch(e){this.disabled=false;this.textContent="تعذّر التصنيف: "+((e&&e.message)||"")}}}
+$("cls").onclick=openCls;
 $("bk").onclick=function(){var u=URL.createObjectURL(new Blob([JSON.stringify(items,null,1)],{type:"application/json"})),l=document.createElement("a");l.href=u;l.download="medicines-backup.json";l.click();setTimeout(function(){URL.revokeObjectURL(u)},1000)};
 $("gt").onclick=async function(){
   var k=localStorage.getItem("gkey");
