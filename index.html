@@ -59,7 +59,7 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 <div id="list"></div>
 <div class="note">البيانات محفوظة في هذا المتصفح فقط. استعمل «نسخ احتياطي» للحفظ.</div>
 <div class="note" id="sy"></div>
-<div class="note"><button id="gt">اختبار الاتصال</button> <button id="gs">⚙︎ مفتاح Gemini</button> <button id="sh">🔗 مشاركة</button> <button id="cls">🧠 تصنيف الأدوية</button> <button id="pdf">📄 تصدير PDF</button> <button id="ics">📅 تذكيرات التقويم</button> <button id="bk">نسخ احتياطي</button> <button id="rs">استعادة</button></div>
+<div class="note"><button id="gt">اختبار الاتصال</button> <button id="gs">⚙︎ مفتاح Gemini</button> <button id="sh">🔗 مشاركة</button> <button id="rx">📋 وصفة طبية</button> <button id="cls">🧠 تصنيف الأدوية</button> <button id="pdf">📄 تصدير PDF</button> <button id="ics">📅 تذكيرات التقويم</button> <button id="bk">نسخ احتياطي</button> <button id="rs">استعادة</button></div>
 
 <div class="bar">
   <button class="p" id="bAdd">📷 مسح وإضافة</button>
@@ -69,6 +69,7 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 <input type="file" id="file" accept="image/*" capture="environment" hidden>
 <input type="file" id="restore" accept="application/json" hidden>
 <input type="file" id="imgf" accept="image/*" hidden>
+<input type="file" id="rxf" accept="image/*" multiple hidden>
 
 <div class="sheet" id="sheet"><div class="pane" id="pane"></div></div>
 
@@ -376,9 +377,9 @@ $("avw").onclick=function(){
   if(!AV){pickAv();return}
   open('<img src="'+AV+'" style="width:70%;display:block;margin:0 auto;border-radius:18px"><div class="row" style="margin-top:14px"><button id="avc">تغيير الصورة</button><button id="avr">الافتراضية</button><button class="d" id="avd">إزالة</button><button id="cx">إغلاق</button></div>');
   $("cx").onclick=close;$("avc").onclick=function(){close();pickAv()};$("avr").onclick=function(){try{localStorage.removeItem("meds-av")}catch(e){}AV=DEF;showAv();close()};$("avd").onclick=function(){AV="";try{localStorage.setItem("meds-av","-")}catch(e){}showAv();close()}};
-async function aiJson(p){
+async function aiJson(p,imgs){
   var k=localStorage.getItem("gkey");if(!k)throw{message:"أضف مفتاح Gemini من زر ⚙︎ أولاً لاستعمال هذه الميزة"};
-  var pick=localStorage.getItem("gmodel"),ms=[pick,"gemini-3.6-flash","gemini-2.5-flash","gemini-3.8-flash"].filter(function(x,i,a){return x&&a.indexOf(x)===i}),last="خطأ من Gemini",body=JSON.stringify({contents:[{parts:[{text:p}]}],generationConfig:{responseMimeType:"application/json",temperature:.2}});
+  var pick=localStorage.getItem("gmodel"),ms=[pick,"gemini-3.6-flash","gemini-2.5-flash","gemini-3.8-flash"].filter(function(x,i,a){return x&&a.indexOf(x)===i}),last="خطأ من Gemini",body;var parts=[{text:p}];if(imgs)for(var q=0;q<imgs.length;q++)parts.push({inline_data:{mime_type:"image/jpeg",data:await b64(imgs[q])}});body=JSON.stringify({contents:[{parts:parts}],generationConfig:{responseMimeType:"application/json",temperature:.2}});
   for(var i=0;i<ms.length;i++){
     try{
       var r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+ms[i]+":generateContent",{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":k},body:body}),j=await r.json().catch(function(){return{}});
@@ -432,6 +433,52 @@ function openCls(){
       localStorage.setItem("meds-cls",JSON.stringify(m));openCls()
     }catch(e){this.disabled=false;this.textContent="تعذّر التصنيف: "+((e&&e.message)||"")}}}
 $("cls").onclick=openCls;
+var RX=[],RXP='هذه صورة وصفة طبية (ordonnance)، قد تكون مطبوعة أو بخط اليد، بالفرنسية أو العربية. استخرج الأدوية الموصوفة فقط. أعد JSON فقط بالشكل {"items":[{"name":"الاسم كما هو مكتوب بحروف لاتينية","dci":"المادة الفعالة إن كانت مكتوبة أو معروفة بوضوح وإلا فارغة","dosage":"التركيز مثل 500 mg","form":"الشكل مثل comprimé أو sirop","instructions":"طريقة الاستعمال والمدة كما هي مكتوبة باختصار","uncertain":false}]}. ضع uncertain:true إن لم تكن متأكداً من قراءة الاسم واكتب أفضل قراءة ولا تخمّن بلا أساس. تجاهل اسم المريض والطبيب وأي بيانات شخصية ولا تدرجها.';
+function mt(a,b){return!!a&&!!b&&(a.indexOf(b)>=0||b.indexOf(a)>=0)}
+function nums(s){return(String(s||"").match(/\d+(?:[.,]\d+)?/g)||[]).join("|")}
+function rxMatch(p){
+  var nn=norm(p.name),nd=norm(p.dci),best=null;
+  items.forEach(function(it){
+    var d=days(it.expiry),ex=d!=null&&d<0,k=null,ni=norm(it.name),id=norm(it.dci);
+    if(nn.length>2&&mt(nn,ni))k="same";
+    else if(nd.length>3&&mt(nd,id))k="alt";
+    else if(nn.length>3&&mt(nn,id))k="alt";
+    if(!k)return;
+    var dose=(p.dosage&&it.dosage&&nums(p.dosage)!==nums(it.dosage))?1:0,sc=(k==="same"?20:10)+(ex?0:5)+(dose?0:2);
+    if(!best||sc>best.sc)best={it:it,k:k,ex:ex,dose:dose,sc:sc}});
+  return best}
+function rxStatus(p){
+  var m=rxMatch(p);if(!m)return["b-r","❌ غير متوفر، تحتاج شراءه"];
+  var nm=m.it.name+(m.it.dosage?" "+m.it.dosage:"");
+  if(m.ex)return["b-o","⚠️ موجود ("+nm+") لكنه منتهي الصلاحية، لا تستعمله"];
+  if(m.k==="same"&&!m.dose)return["b-g","✅ متوفر: "+nm+" · ينتهي "+fmt(m.it.expiry)];
+  if(m.k==="same")return["b-o","🔶 متوفر بتركيز مختلف: "+nm+"، اسأل الصيدلي"];
+  return["b-o","🔄 بديل بنفس المادة الفعالة: "+nm+(m.dose?" (تركيز مختلف)":"")+"، استشر الصيدلي قبل الاستبدال"]}
+function paintRx(){
+  var ok=0,miss=[];
+  RX.forEach(function(p,i){var s=rxStatus(p),m=rxMatch(p);if(m&&!m.ex)ok++;else miss.push(p.name+(p.dosage?" "+p.dosage:""));$("rs"+i).innerHTML='<span class="badge '+s[0]+'" style="white-space:normal;display:inline-block;line-height:1.6">'+esc(s[1])+'</span>'});
+  var e=$("rxs");e.className="al "+(miss.length?"s-o":"s-g");
+  e.innerHTML=miss.length?'لديك '+ok+' من '+RX.length+'. ناقص أو منتهي: <bdi>'+esc(miss.join("، "))+'</bdi>':'✅ كل أدوية الوصفة متوفرة عندك ('+RX.length+')';
+  e.dataset.miss=miss.join("\n")}
+function showRx(){
+  var h='<h2 style="margin:0 0 4px">📋 نتيجة مسح الوصفة</h2><div class="msg">راجع الأسماء وصحّح أي قراءة خاطئة، فقراءة الخط اليدوي قد تخطئ. هذه ليست استشارة طبية، فلا تغيّر الدواء أو الجرعة دون الصيدلي أو الطبيب.</div><div id="rxs" class="al"></div>';
+  RX.forEach(function(p,i){h+='<div class="card" style="display:block;margin:8px 0"><input data-i="'+i+'" value="'+esc(p.name)+'" style="font-weight:700"><div class="dt">'+esc([p.dosage,p.form].filter(Boolean).join(" · "))+'</div>'+(p.instructions?'<div class="dt">📝 '+esc(p.instructions)+'</div>':'')+(p.uncertain?'<div class="dt" style="color:var(--org)">⚠️ القراءة غير مؤكدة</div>':'')+'<div id="rs'+i+'" style="margin-top:6px"></div></div>'});
+  h+='<div class="row" style="margin-top:12px"><button class="p" id="rxc">نسخ / مشاركة الناقص</button><button id="cx">إغلاق</button></div>';
+  open(h);$("cx").onclick=close;
+  document.querySelectorAll("#pane input[data-i]").forEach(function(inp){inp.oninput=function(){RX[+inp.dataset.i].name=inp.value;paintRx()}});
+  $("rxc").onclick=function(){var t=($("rxs").dataset.miss||"").split("\n").filter(Boolean);if(!t.length){alert("لا يوجد ناقص.");return}var tx="أدوية ناقصة:\n- "+t.join("\n- ");if(navigator.share){navigator.share({text:tx}).catch(function(){})}else{var a=document.createElement("textarea");a.value=tx;document.body.appendChild(a);a.select();document.execCommand("copy");a.remove();alert("تم النسخ.")}};
+  paintRx()}
+$("rx").onclick=function(){$("rxf").value="";$("rxf").click()};
+$("rxf").onchange=async function(){
+  var fs=Array.from(this.files).slice(0,3);if(!fs.length)return;
+  open('<h2 style="margin:0 0 6px">جاري قراءة الوصفة…</h2><div class="msg">قد يستغرق ذلك لحظات.</div>');
+  try{
+    var bl=[];for(var i=0;i<fs.length;i++)bl.push(await shrink(fs[i]));
+    var r=await aiJson(RXP,bl),arr=Array.isArray(r)?r:((r&&(r.items||r.medicines))||[]);
+    RX=arr.filter(function(x){return x&&x.name}).map(function(x){return{name:String(x.name),dci:x.dci||"",dosage:x.dosage||"",form:x.form||"",instructions:x.instructions||"",uncertain:!!x.uncertain}});
+    if(!RX.length){open('<h2 style="margin:0 0 6px">لم أجد أدوية في الصورة</h2><div class="msg">صوّر الوصفة بوضوح وإضاءة جيدة وجرّب مرة أخرى.</div><div class="row"><button id="cx">إغلاق</button></div>');$("cx").onclick=close;return}
+    showRx()
+  }catch(e){open('<h2 style="margin:0 0 6px">تعذّرت قراءة الوصفة</h2><div class="msg err">'+esc((e&&e.message)||"")+'</div><div class="row"><button id="cx">إغلاق</button></div>');$("cx").onclick=close}};
 $("bk").onclick=function(){var u=URL.createObjectURL(new Blob([JSON.stringify(items,null,1)],{type:"application/json"})),l=document.createElement("a");l.href=u;l.download="medicines-backup.json";l.click();setTimeout(function(){URL.revokeObjectURL(u)},1000)};
 $("gt").onclick=async function(){
   var k=localStorage.getItem("gkey");
