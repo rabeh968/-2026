@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" class="glass">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -46,6 +46,35 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 .msg{font-size:13px;margin:8px 0;color:var(--mut)}
 .msg.err{color:var(--red)}
 .note{font-size:12px;color:var(--mut);margin-top:16px;text-align:center}
+
+:root{--g-bg:rgba(255,255,255,.52);--g-bg2:rgba(255,255,255,.72);--g-bd:rgba(255,255,255,.75);--g-in:rgba(255,255,255,.45);--g-sh:rgba(20,70,55,.16);--g-hi:rgba(255,255,255,.85)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--g-bg:rgba(30,48,41,.42);--g-bg2:rgba(24,38,33,.72);--g-bd:rgba(255,255,255,.16);--g-in:rgba(255,255,255,.07);--g-sh:rgba(0,0,0,.45);--g-hi:rgba(255,255,255,.22)}}
+:root[data-theme="dark"]{--g-bg:rgba(30,48,41,.42);--g-bg2:rgba(24,38,33,.72);--g-bd:rgba(255,255,255,.16);--g-in:rgba(255,255,255,.07);--g-sh:rgba(0,0,0,.45);--g-hi:rgba(255,255,255,.22)}
+@keyframes gdrift{0%{transform:translate3d(-3%,-2%,0) scale(1)}100%{transform:translate3d(3%,3%,0) scale(1.12)}}
+html.glass body{padding-bottom:160px}
+html.glass body::before{content:"";position:fixed;inset:-25%;z-index:-1;pointer-events:none;background:radial-gradient(38% 30% at 18% 14%,rgba(63,180,143,.55),transparent 70%),radial-gradient(34% 28% at 86% 28%,rgba(90,140,255,.42),transparent 70%),radial-gradient(42% 32% at 40% 62%,rgba(255,196,110,.30),transparent 70%),radial-gradient(40% 30% at 80% 92%,rgba(190,110,255,.30),transparent 70%);filter:blur(24px);animation:gdrift 26s ease-in-out infinite alternate}
+html.glass .card,html.glass .st,html.glass .al{background:var(--g-bg);-webkit-backdrop-filter:blur(16px) saturate(180%) brightness(1.04);backdrop-filter:blur(16px) saturate(180%) brightness(1.04);border:1px solid var(--g-bd);box-shadow:0 10px 30px var(--g-sh),inset 0 1px 0 var(--g-hi),inset 0 -1px 0 rgba(255,255,255,.08);position:relative}
+html.glass .card::after,html.glass .st::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(135deg,rgba(255,255,255,.34) 0%,rgba(255,255,255,0) 38%,rgba(255,255,255,0) 68%,rgba(255,255,255,.14) 100%)}
+html.glass .st.s-r{background:color-mix(in srgb,var(--redb) 55%,transparent)}
+html.glass .st.s-o{background:color-mix(in srgb,var(--orgb) 55%,transparent)}
+html.glass .st.s-g{background:color-mix(in srgb,var(--grnb) 55%,transparent)}
+html.glass .al.s-r{background:color-mix(in srgb,var(--redb) 60%,transparent)}
+html.glass .al.s-o{background:color-mix(in srgb,var(--orgb) 60%,transparent)}
+html.glass .al.s-g{background:color-mix(in srgb,var(--grnb) 60%,transparent)}
+html.glass input,html.glass select{background:var(--g-in);-webkit-backdrop-filter:blur(12px) saturate(160%);backdrop-filter:blur(12px) saturate(160%);border:1px solid var(--g-bd);box-shadow:inset 0 1px 3px rgba(0,0,0,.08),inset 0 1px 0 var(--g-hi)}
+html.glass input:focus,html.glass select:focus{outline:none;border-color:var(--pri);box-shadow:0 0 0 3px color-mix(in srgb,var(--pri) 30%,transparent),inset 0 1px 0 var(--g-hi)}
+html.glass button{background:var(--g-bg);-webkit-backdrop-filter:blur(14px) saturate(170%);backdrop-filter:blur(14px) saturate(170%);border:1px solid var(--g-bd);box-shadow:0 4px 14px var(--g-sh),inset 0 1px 0 var(--g-hi);transition:transform .22s cubic-bezier(.3,1.6,.5,1),box-shadow .2s}
+html.glass button:active{transform:scale(.95)}
+html.glass button.p{background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,0) 55%),var(--pri);border-color:rgba(255,255,255,.35);box-shadow:0 6px 18px color-mix(in srgb,var(--pri) 45%,transparent),inset 0 1px 0 rgba(255,255,255,.6)}
+html.glass .seg button.on{background:linear-gradient(180deg,rgba(255,255,255,.3),rgba(255,255,255,0) 55%),var(--pri)}
+html.glass .bar{inset:auto 12px calc(8px + env(safe-area-inset-bottom,0px)) 12px;padding:8px;border-radius:32px;background:var(--g-bg);-webkit-backdrop-filter:blur(26px) saturate(200%) brightness(1.05);backdrop-filter:blur(26px) saturate(200%) brightness(1.05);border:1px solid var(--g-bd);box-shadow:0 14px 40px var(--g-sh),inset 0 1px 0 var(--g-hi),inset 0 -1px 0 rgba(255,255,255,.1)}
+html.glass .bar button{border-radius:24px;box-shadow:inset 0 1px 0 var(--g-hi)}
+html.glass .bar button.p{box-shadow:0 6px 18px color-mix(in srgb,var(--pri) 45%,transparent),inset 0 1px 0 rgba(255,255,255,.6)}
+html.glass .sheet{background:rgba(10,20,16,.28);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+html.glass .pane{width:calc(100% - 16px);margin:0 8px calc(8px + env(safe-area-inset-bottom,0px));border-radius:32px;background:var(--g-bg2);-webkit-backdrop-filter:blur(34px) saturate(190%);backdrop-filter:blur(34px) saturate(190%);border:1px solid var(--g-bd);box-shadow:0 20px 60px var(--g-sh),inset 0 1px 0 var(--g-hi)}
+html.glass .av{box-shadow:0 8px 24px var(--g-sh),0 0 0 3px color-mix(in srgb,var(--pri) 25%,transparent),inset 0 1px 0 var(--g-hi)}
+html.glass .badge{box-shadow:inset 0 1px 0 var(--g-hi)}
+@media (prefers-reduced-motion:reduce){html.glass body::before{animation:none}html.glass button{transition:none}}
 </style>
 </head>
 <body>
@@ -59,7 +88,7 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 <div id="list"></div>
 <div class="note">البيانات محفوظة في هذا المتصفح فقط. استعمل «نسخ احتياطي» للحفظ.</div>
 <div class="note" id="sy"></div>
-<div class="note"><button id="gt">اختبار الاتصال</button> <button id="gs">⚙︎ مفتاح Gemini</button> <button id="sh">🔗 مشاركة</button> <button id="lg">🌐</button> <button id="rx">📋 وصفة طبية</button> <button id="cls">🧠 تصنيف الأدوية</button> <button id="pdf">📄 تصدير PDF</button> <button id="ics">📅 تذكيرات التقويم</button> <button id="bk">نسخ احتياطي</button> <button id="rs">استعادة</button></div>
+<div class="note"><button id="gt">اختبار الاتصال</button> <button id="gs">⚙︎ مفتاح Gemini</button> <button id="sh">🔗 مشاركة</button> <button id="gl">✨</button> <button id="lg">🌐</button> <button id="rx">📋 وصفة طبية</button> <button id="cls">🧠 تصنيف الأدوية</button> <button id="pdf">📄 تصدير PDF</button> <button id="ics">📅 تذكيرات التقويم</button> <button id="bk">نسخ احتياطي</button> <button id="rs">استعادة</button></div>
 
 <div class="bar">
   <button class="p" id="bAdd">📷 مسح وإضافة</button>
@@ -595,6 +624,7 @@ function setLang(l){
   document.title=l==="fr"?"Pharmacie de la Maison":l==="en"?"Home Pharmacy":"صيدلية البيت";
   $("lg").textContent=l==="fr"?"🌐 Français":l==="en"?"🌐 English":"🌐 العربية";
   render();xl(document.body)}
+(function(){var g=localStorage.getItem("meds-glass"),off=g==="0"||(g===null&&window.matchMedia&&matchMedia("(prefers-reduced-transparency: reduce)").matches);document.documentElement.classList.toggle("glass",!off);var b=$("gl");function lb(){b.textContent=document.documentElement.classList.contains("glass")?"✨ Glass ON":"✨ Glass OFF"}lb();b.onclick=function(){var on=!document.documentElement.classList.contains("glass");document.documentElement.classList.toggle("glass",on);try{localStorage.setItem("meds-glass",on?"1":"0")}catch(e){}lb()}})();
 $("lg").onclick=function(){setLang(LANG==="ar"?"fr":LANG==="fr"?"en":"ar")};
 $("bk").onclick=function(){var u=URL.createObjectURL(new Blob([JSON.stringify(items,null,1)],{type:"application/json"})),l=document.createElement("a");l.href=u;l.download="medicines-backup.json";l.click();setTimeout(function(){URL.revokeObjectURL(u)},1000)};
 $("gt").onclick=async function(){
